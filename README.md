@@ -1,92 +1,138 @@
-# Impulsa Dashboard UI
+# ⚡ IMPULSA — Plataforma Educativa Gamificada
 
-Actúa como un Desarrollador Web Frontend Senior y Diseñador UI/UX experto.
+> **IMPULSA** es una plataforma educativa gamificada diseñada para instituciones escolares. Fomenta el aprendizaje, la colaboración y la sana competencia por salones mediante la resolución de misiones, acumulación de **Puntos de Temporada** (periodo académico) y **Puntos de Liga** (acumulados del año lectivo).
 
-Necesito que crees el prototipo visual funcional (interfaz de usuario) en HTML5 y CSS3 puro (sin librerías ni frameworks externos) para el Dashboard principal de la plataforma educativa gamificada "IMPULSA".
+---
 
-La competencia se realiza a nivel de Salón y maneja dos métricas clave: Puntos de Temporada (periodo académico) y Puntos de Liga (acumulados del año).
+## 🌟 Características Principales
 
-📁 1. Estructura de Archivos y Carpetas
+### 🔐 1. Pantalla de Inicio de Sesión (Login) Animada
+- **Diseño Aesthetic & Gamificado**: Fondo con gradiente profundo, auras lumínicas ambientales y efectos de resplandor (*glow*).
+- **Animaciones de Partículas y Estrellas ✨**: Destellos, estrellas parpadeantes y bordes animados alrededor de la tarjeta de inicio de sesión.
+- **Vista Previa de Roles (Demo)**: Permite probar el ingreso como **Estudiante**, **Director de Grupo**, **Docente** o **Administrador**.
 
-Organiza la entrega indicando explícitamente la estructura de carpetas en la que debo guardar los archivos:
+### 👥 2. Paneles Específicos por Rol (Dashboards)
+Cada usuario cuenta con un panel personalizado según sus permisos:
+- 🎓 **Panel Estudiantil (`/dashboard/estudiante`)**: Seguimiento de clase actual, puntos personales, misiones activas y estado de entregas.
+- 📋 **Panel Director de Grupo (`/dashboard/director`)**: Gestión de misiones de clase, creación de retos y revisión de evidencias presentadas por estudiantes.
+- 👨‍🏫 **Panel Docente (`/dashboard/docente`)**: Publicación de asignaciones académicas y validación/aprobación de evidencias enviadas.
+- ⚙️ **Consola de Administración (`/dashboard/admin`)**: Métricas globales de usuarios, gestión de grupos activos, control de temporadas y estado de servicios.
 
-Plaintext
+### 📊 3. Sección General de Estadísticas y Liga (`/dashboard/general`)
+Sección compartida accesible desde el encabezado superior que ofrece una vista panorámica de la competencia:
+- **Tarjetas KPI**:
+  - **Puntos de Temporada**: Barra de progreso con desglose entre misiones de aula e institucionales.
+  - **Puntos de Liga**: Total acumulado del año lectivo con indicador de tendencia semanal.
+  - **Posición en Ranking**: Badge con el puesto del salón (`#2 de 18 salones`) y diferencia de puntos con el 1.er puesto.
+- **Filtro y Buscador de Misiones**:
+  - Filtrado por categorías: *Ambiental*, *Deportiva*, *Académica*, *Cultural* y *Convivencia*.
+  - Búsqueda en tiempo real por título o palabras clave.
+  - Tarjetas clasificadas por rareza: *Común*, *Especial*, *Épica*, *Legendaria* y *⚡ Relámpago*.
+- **Proyecto X**: Banner del evento especial de temporada para la postulación de iniciativas de alto impacto con bonificación histórica de puntos.
+- **Modal de Subida de Evidencias**: Formulario interactivo para adjuntar archivos (fotografías, documentos, videos) con notificaciones Toast.
+- **Control Dinámico de Permisos**:
+  - Estudiantes: Lectura de tablas y envío de evidencias.
+  - Docentes / Directores / Admins: Habilitación de acciones de **"Validar Evidencia"**, **"Crear Misión"** y control de temporada.
 
-impulsa-dashboard/
-├── index.html
-└── css/
-    └── styles.css
+### 🔄 4. Navegación Inteligente (Header)
+- Pestañas dinámicas para conmutar fácilmente entre **Mi Panel** (vista del rol activo) y **Estadísticas y Liga**.
+- Botón para **Cerrar Sesión** con redirección segura a la pantalla de login.
 
+---
 
-🎨 2. Componentes y Secciones Visuales Requeridas
+## 🛠️ Tecnologías Utilizadas
 
-Diseña una interfaz moderna, atractiva para un entorno escolar, intuitiva y responsive, que contenga los siguientes elementos principales:
+- **Core**: React 19, TypeScript 5, Vite
+- **Enrutamiento**: TanStack Router / TanStack Start (Enrutamiento basado en archivos)
+- **Estilos & UI**: Tailwind CSS v4, Lucide Icons, Shadcn UI primitives, Sonner (Toasts)
+- **Herramientas de Desarrollo**: ESLint, Prettier, TypeScript Compiler
 
-Barra de Navegación / Header:
+---
 
-Logo de IMPULSA.
+## 📁 Estructura del Proyecto
 
-Nombre e información del Salón activo (Ejemplo: Grado 10°A - Director: Prof. García).
-
-Selector/Indicador de Temporada Actual (Ejemplo: Temporada 1 / Periodo 1).
-
-Panel de Tarjetas Métricas (KPIs):
-
-Puntos de Temporada: Muestra los puntos del periodo actual (máximo 20,000 pts: 12,000 de misiones y 8,000 institucionales) con una barra de progreso.
-
-Puntos de Liga: Muestra el total acumulado en el año lectivo.
-
-Posición en Ranking: Un badge o indicador destacando el puesto actual del salón.
-
-Sección Central - Tablero de Misiones Activas:
-
-Tarjetas (Cards) para misiones con etiquetas de rareza diferenciadas por color:
-
-Común / Especial: Borde/Badges sencillos.
-
-Épica / Legendaria: Badges destacados e indicador si otorga Puntos de Liga.
-
-Relámpago: Etiqueta especial de corta duración.
-
-Cada tarjeta debe incluir: Título, Categoría (ej: Ambiental, Deportiva), tiempo restante, recompensa de puntos y botón de acción (Ver / Subir Evidencias).
-
-Sección Lateral - Tabla de Ranking Doble (Tabs o Dos Columnas):
-
-Ranking de Temporada: Ordenado por Puntos de Temporada.
-
-Ranking de Liga: Ordenado por Puntos de Liga acumulados.
-
-La tabla debe mostrar: Posición, Salón, Puntos y Variación/Diferencia con el 1º puesto.
-
-Módulo Destacado - "Proyecto X":
-
-Una tarjeta visual interactiva para la propuesta del evento especial de la Temporada.
-
-🛠️ 3. Especificaciones Técnicas y Estilo
-
-Paleta de Colores: Utiliza tonos vibrantes e institucionales (Azul Índigo, Púrpura/Gamificación, Dorado para Legendarias y Verde/Gris para estados de validación).
-
-Layout Flexbox / CSS Grid: Estructura limpia de dos o tres columnas para escritorio.
-
-Código Completo: Proporciona los archivos index.html y css/styles.css 100% completos y funcionales sin omitir código
-
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/b0b0b987-b2ee-44bc-823d-674cd8f294e8).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+```plaintext
+impulsa-dashboard-ui/
+├── public/                      # Recursos estáticos y prototipo HTML
+├── src/
+│   ├── components/
+│   │   └── ui/                  # Componentes reutilizables (Header, Buttons, Inputs, Cards, etc.)
+│   ├── hooks/                   # Hooks personalizados de React
+│   ├── lib/                     # Utilidades y configuración de errores
+│   ├── pages/
+│   │   └── dashboards/          # Vistas principales de Dashboards
+│   │       ├── AdminDashboard.tsx
+│   │       ├── DirectorDashboard.tsx
+│   │       ├── DocenteDashboard.tsx
+│   │       ├── EstudianteDashboard.tsx
+│   │       └── GeneralDashboard.tsx
+│   ├── routes/                  # Rutas basadas en archivos de TanStack Router
+│   │   ├── __root.tsx           # Layout raíz y proveedores de contexto
+│   │   ├── index.tsx            # Redirección automática a /login
+│   │   ├── login.tsx            # Pantalla de Login animada
+│   │   └── dashboard/           # Rutas para cada panel
+│   │       ├── admin.tsx
+│   │       ├── director.tsx
+│   │       ├── docente.tsx
+│   │       ├── estudiante.tsx
+│   │       └── general.tsx
+│   ├── routeTree.gen.ts         # Árbol de rutas generado automáticamente
+│   ├── styles.css               # Estilos globales de Tailwind CSS
+│   └── types/                   # Definiciones de tipos de TypeScript
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
 ```
+
+---
+
+## 🚀 Instalación y Ejecución Local
+
+### Prerrequisitos
+Tener instalado **Node.js** (versión 18 o superior) y **npm** o **bun**.
+
+### Pasos
+
+1. **Clonar el repositorio**:
+   ```bash
+   git clone https://github.com/SaebGC/impulsa-dashboard-ui.git
+   cd impulsa-dashboard-ui
+   ```
+
+2. **Instalar dependencias**:
+   ```bash
+   npm install
+   ```
+
+3. **Iniciar el servidor de desarrollo**:
+   ```bash
+   npm run dev
+   ```
+
+4. Abrir en el navegador:
+   ```text
+   http://localhost:3000/
+   ```
+
+---
+
+## 📦 Construcción para Producción
+
+Para generar el bundle optimizado para producción:
+
+```bash
+npm run build
+```
+
+Para previsualizar la compilación localmente:
+
+```bash
+npm run preview
+```
+
+---
+
+## 📝 Licencia y Créditos
+
+Proyecto desarrollado para la plataforma educativa **IMPULSA**.  
+Repositorio oficial: [SaebGC/impulsa-dashboard-ui](https://github.com/SaebGC/impulsa-dashboard-ui)
