@@ -1,707 +1,375 @@
 import React, { useState, useEffect } from 'react';
-import { Header } from '../../components/ui/Header';
+import { useNavigate } from '@tanstack/react-router';
 import {
+  Home,
   Trophy,
-  Flame,
-  Award,
-  TrendingUp,
-  Search,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Upload,
-  PlusCircle,
-  X,
-  FileText,
-  ShieldAlert,
-  Sparkles,
+  Shield,
+  Target,
+  History,
+  Bell,
   ChevronRight,
-  Filter,
+  Menu,
+  X,
+  Star,
+  Megaphone,
+  BarChart3,
+  Award,
+  CheckCircle2,
+  Clock,
+  Upload,
+  Info,
+  Sparkles,
+  LogOut,
+  Flame,
+  TrendingUp,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Mission {
-  id: string;
-  type: 'comun' | 'especial' | 'epica' | 'legendaria' | 'relampago';
-  badgeLabel: string;
-  category: 'Ambiental' | 'Deportiva' | 'Académica' | 'Cultural' | 'Convivencia';
-  title: string;
-  description: string;
-  timeRemaining: string;
-  urgent?: boolean;
-  rewardPoints: number;
-  isEpicOrLegendary?: boolean;
-  status: 'active' | 'in_review' | 'approved';
-}
+// ==========================================
+// CUSTOM VECTOR ARTWORK / SVGS (PREMIUM BRANDING)
+// ==========================================
 
-const INITIAL_MISSIONS: Mission[] = [
-  {
-    id: 'm1',
-    type: 'comun',
-    badgeLabel: 'Común',
-    category: 'Ambiental',
-    title: 'Reciclatón de aula',
-    description: 'Recolecta y clasifica 15 kg de material reciclable durante la semana.',
-    timeRemaining: '3 días 12 h',
-    rewardPoints: 300,
-    status: 'active',
-  },
-  {
-    id: 'm2',
-    type: 'especial',
-    badgeLabel: 'Especial',
-    category: 'Deportiva',
-    title: 'Torneo relámpago de microfútbol',
-    description: 'Inscribe un equipo mixto y participa en la fase de grupos intercursos.',
-    timeRemaining: '5 días',
-    rewardPoints: 650,
-    status: 'active',
-  },
-  {
-    id: 'm3',
-    type: 'epica',
-    badgeLabel: 'Épica',
-    category: 'Académica',
-    title: 'Feria de ciencia e innovación',
-    description: 'Presenta un prototipo funcional con informe y sustentación ante el jurado.',
-    timeRemaining: '12 días',
-    rewardPoints: 1800,
-    isEpicOrLegendary: true,
-    status: 'active',
-  },
-  {
-    id: 'm4',
-    type: 'legendaria',
-    badgeLabel: 'Legendaria',
-    category: 'Cultural',
-    title: 'Montaje artístico "Raíces vivas"',
-    description: 'Puesta en escena de 20 minutos con guion original y participación de todo el salón.',
-    timeRemaining: '21 días',
-    rewardPoints: 3000,
-    isEpicOrLegendary: true,
-    status: 'active',
-  },
-  {
-    id: 'm5',
-    type: 'relampago',
-    badgeLabel: '⚡ Relámpago',
-    category: 'Convivencia',
-    title: 'Aula impecable sorpresa',
-    description: 'Inspección sorpresa de orden y aseo. Válida solo por hoy.',
-    timeRemaining: '04 h 18 min',
-    urgent: true,
-    rewardPoints: 450,
-    status: 'active',
-  },
-  {
-    id: 'm6',
-    type: 'comun',
-    badgeLabel: 'Común',
-    category: 'Ambiental',
-    title: 'Punto verde del pasillo',
-    description: 'Instalación y señalización del punto de acopio asignado al salón.',
-    timeRemaining: 'En evaluación',
-    rewardPoints: 250,
-    status: 'in_review',
-  },
+const ImpulsaLogo: React.FC = () => (
+  <div className="flex items-center gap-3">
+    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e2e6e] border border-blue-400/30 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M19 5c0 0-4.5.5-8 4-2.8 2.8-3.5 6.5-3.5 6.5s-2-1-4 1c-2 2-1.5 6-1.5 6s4 .5 6-1.5c2-2 1-4 1-4s3.7-.7 6.5-3.5c3.5-3.5 4-8 4-8z"
+          fill="url(#rocketGoldGrad)"
+        />
+        <path
+          d="M4 20c.5-1.5 2-2.5 2.5-3m-4.5.5l1.5-1.5"
+          stroke="#F59E0B"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <defs>
+          <linearGradient id="rocketGoldGrad" x1="4" y1="5" x2="19" y2="20" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#FDE047" />
+            <stop offset="0.5" stopColor="#F59E0B" />
+            <stop offset="1" stopColor="#D97706" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <span className="text-xl font-black tracking-widest text-[#FFD700] select-none font-sans drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
+      IMPULSA
+    </span>
+  </div>
+);
+
+const SchoolCrest: React.FC<{ className?: string }> = ({ className = "w-9 h-9" }) => (
+  <svg className={className} viewBox="0 0 40 45" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M20 2C32 2 37 6 37 18C37 30 28 39 20 43C12 39 3 30 3 18C3 6 8 2 20 2Z"
+      fill="#0f172a"
+      stroke="url(#crestGoldBorder)"
+      strokeWidth="2.5"
+    />
+    <path
+      d="M20 5C29 5 33 8 33 18C33 27 26 35 20 39C14 35 7 27 7 18C7 8 11 5 20 5Z"
+      fill="#1e293b"
+    />
+    <path
+      d="M20 10L22.5 15.5H28.5L24 19L25.8 24.5L20 21L14.2 24.5L16 19L11.5 15.5H17.5L20 10Z"
+      fill="url(#crestGoldInner)"
+    />
+    <path
+      d="M13 28C16 31 24 31 27 28"
+      stroke="url(#crestGoldInner)"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <defs>
+      <linearGradient id="crestGoldBorder" x1="0" y1="0" x2="40" y2="45" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#FDE047" />
+        <stop offset="0.5" stopColor="#EAB308" />
+        <stop offset="1" stopColor="#CA8A04" />
+      </linearGradient>
+      <linearGradient id="crestGoldInner" x1="11.5" y1="10" x2="28.5" y2="24.5" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#FDE047" />
+        <stop offset="1" stopColor="#CA8A04" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const BannerTrophy: React.FC = () => (
+  <div className="relative select-none pointer-events-none flex items-center justify-center shrink-0">
+    <svg viewBox="0 0 200 200" className="w-36 h-36 md:w-44 md:h-44 drop-shadow-[0_12px_24px_rgba(245,158,11,0.35)]" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="50" fill="#FBBF24" opacity="0.2" filter="blur(15px)" />
+      {/* Confetti particles */}
+      <circle cx="20" cy="50" r="3" fill="#3B82F6" className="animate-pulse" />
+      <circle cx="175" cy="40" r="4.5" fill="#EC4899" />
+      <rect x="35" y="85" width="7" height="4" rx="1.5" fill="#10B981" transform="rotate(18 35 85)" />
+
+      {/* Pedestal base */}
+      <path d="M60 148H140V163C140 165.2 138.2 167 136 167H64C61.8 167 60 165.2 60 163V148Z" fill="url(#pedestalGrad)" />
+      <path d="M50 167H150V175C150 177.2 148.2 179 146 179H54C51.8 179 50 177.2 50 175V167Z" fill="#1e293b" />
+
+      {/* Trophy Stem & Cup */}
+      <path d="M92 115H108V148H92V115Z" fill="url(#goldGrad)" />
+      <path d="M60 48H140V90C140 112 122 130 100 130C78 130 60 112 60 90V48Z" fill="url(#goldGrad)" />
+      <text x="100" y="93" fill="#92400e" fontSize="38" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">1</text>
+      
+      <defs>
+        <linearGradient id="pedestalGrad" x1="60" y1="148" x2="140" y2="167" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#334155" />
+          <stop offset="1" stopColor="#0F172A" />
+        </linearGradient>
+        <linearGradient id="goldGrad" x1="60" y1="48" x2="140" y2="130" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FDE047" />
+          <stop offset="0.3" stopColor="#FBBF24" />
+          <stop offset="0.7" stopColor="#F59E0B" />
+          <stop offset="1" stopColor="#D97706" />
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+);
+
+// Quick Access custom SVGs
+const QuickAccessTrophySVG: React.FC = () => (
+  <svg viewBox="0 0 120 120" className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 shrink-0 transition-transform duration-300 hover:scale-105" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M35 88H85V98H35V88Z" fill="#1E3A8A" />
+    <path d="M42 80H78V88H42V80Z" fill="#2563EB" />
+    <path d="M54 62H66V80H54V62Z" fill="#EAB308" />
+    <path d="M38 26H82V54C82 66 70 78 60 78C50 78 38 66 38 54V26Z" fill="#F59E0B" />
+  </svg>
+);
+
+const LEADERBOARD_SEASON = [
+  { rank: 1, classroom: '10-01', points: '9.210 pts', isLeader: true },
+  { rank: 2, classroom: '11-02', points: '8.980 pts' },
+  { rank: 3, classroom: '10-02', points: '8.450 pts', isMe: true },
+  { rank: 4, classroom: '09-01', points: '7.850 pts' },
+  { rank: 5, classroom: '11-01', points: '7.120 pts' },
 ];
 
-const RANKING_SEASON = [
-  { rank: 1, classroom: '11°B', points: '15.590', diff: '—', isFirst: true },
-  { rank: 2, classroom: '10°A', points: '14.350', diff: '-1.240', isMe: true },
-  { rank: 3, classroom: '9°C', points: '13.870', diff: '-1.720' },
-  { rank: 4, classroom: '10°B', points: '12.410', diff: '-3.180' },
-  { rank: 5, classroom: '8°A', points: '11.905', diff: '-3.685' },
-  { rank: 6, classroom: '11°A', points: '10.240', diff: '-5.350' },
-  { rank: 7, classroom: '9°A', points: '9.780', diff: '-5.810' },
-];
-
-const RANKING_LEAGUE = [
-  { rank: 1, classroom: '9°C', points: '52.300', diff: '—', isFirst: true },
-  { rank: 2, classroom: '10°A', points: '48.920', diff: '-3.380', isMe: true },
-  { rank: 3, classroom: '11°B', points: '47.150', diff: '-5.150' },
-  { rank: 4, classroom: '10°B', points: '43.880', diff: '-8.420' },
-  { rank: 5, classroom: '11°A', points: '40.010', diff: '-12.290' },
-  { rank: 6, classroom: '8°A', points: '38.460', diff: '-13.840' },
-  { rank: 7, classroom: '9°A', points: '35.720', diff: '-16.580' },
+const LEADERBOARD_LEAGUE = [
+  { rank: 1, classroom: '11-02', points: '48.200 pts', isLeader: true },
+  { rank: 2, classroom: '09-01', points: '44.150 pts' },
+  { rank: 3, classroom: '10-02', points: '41.300 pts', isMe: true },
+  { rank: 4, classroom: '10-01', points: '38.900 pts' },
+  { rank: 5, classroom: '11-01', points: '35.400 pts' },
 ];
 
 export const GeneralDashboard: React.FC = () => {
-  const [userRole, setUserRole] = useState<string>('Estudiante');
-  const [selectedCategory, setSelectedCategory] = useState<string>('todas');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'season' | 'league'>('season');
-  const [selectedSeason, setSelectedSeason] = useState<string>('s1');
+  const navigate = useNavigate();
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [activeMission, setActiveMission] = useState<Mission | null>(null);
-  const [evidenceDesc, setEvidenceDesc] = useState<string>('');
-  const [evidenceType, setEvidenceType] = useState<string>('Fotografías');
-  const [responsibleName, setResponsibleName] = useState<string>('');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  // State Management
+  const [activeTab, setActiveTab] = useState<'ranking' | 'inicio'>('ranking');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [rankingFilter, setRankingFilter] = useState<'season' | 'league'>('season');
 
-  // Missions state
-  const [missions, setMissions] = useState<Mission[]>(INITIAL_MISSIONS);
-
-  useEffect(() => {
-    const storedRole = localStorage.getItem('userRole');
-    if (storedRole) {
-      setUserRole(storedRole);
-    }
-  }, []);
-
-  const isAdmin = userRole === 'Administrador';
-  const isTeacherOrDirector = userRole === 'Docente' || userRole === 'Director de Grupo' || isAdmin;
-  const isStudent = userRole === 'Estudiante';
-
-  // Open modal for uploading evidence
-  const handleOpenEvidenceModal = (mission: Mission) => {
-    setActiveMission(mission);
-    setIsModalOpen(true);
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    toast.success('Sesión cerrada con éxito');
+    navigate({ to: '/login' });
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setActiveMission(null);
-    setEvidenceDesc('');
-    setResponsibleName('');
-    setSelectedFiles([]);
-  };
-
-  const handleEvidenceSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeMission) return;
-
-    // Update status to in_review
-    setMissions((prev) =>
-      prev.map((m) => (m.id === activeMission.id ? { ...m, status: 'in_review' } : m))
-    );
-
-    toast.success('Evidencia enviada con éxito', {
-      description: `La coordinación validará la evidencia de "${activeMission.title}" en máximo 48h.`,
-    });
-
-    handleCloseModal();
-  };
-
-  const handleValidateEvidence = (missionId: string) => {
-    setMissions((prev) =>
-      prev.map((m) => (m.id === missionId ? { ...m, status: 'approved' } : m))
-    );
-    toast.success('Evidencia validada y aprobada', {
-      description: 'Los puntos han sido sumados al salón 10°A.',
-    });
-  };
-
-  const handleCreateMission = () => {
-    toast.info('Modo Creación de Misión', {
-      description: 'Como docente/administrador, puedes configurar misiones en el panel académico.',
-    });
-  };
-
-  // Filtered missions
-  const filteredMissions = missions.filter((m) => {
-    const matchesCategory =
-      selectedCategory === 'todas' ||
-      m.category.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesSearch =
-      m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const menuItems = [
+    { id: 'inicio', label: 'Inicio', icon: Home },
+    { id: 'ranking', label: 'Tabla de Liga', icon: Trophy },
+  ] as const;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
-      <Header title="Estadísticas y Tabla General de Liga" roleLabel={userRole} />
+    <div className="min-h-screen bg-[#F8FAFC] flex text-slate-800 font-sans relative overflow-x-hidden">
+      
+      {/* 1. SIDEBAR */}
+      <aside
+        className={`w-64 bg-[#0A0F24] text-white flex flex-col justify-between shrink-0 transition-transform duration-300 z-40
+          fixed md:sticky top-0 h-screen
+          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}
+      >
+        <div className="p-6 border-b border-blue-900/30 flex items-center justify-between">
+          <ImpulsaLogo />
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="md:hidden p-1.5 rounded-lg bg-blue-950 text-blue-300 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
-        {/* Banner de Salón & Temporada */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 font-black text-xl text-white shadow-lg shadow-indigo-600/30">
-              10A
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-white">Grado 10°A</h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  Tu Salón
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Director de grupo: <strong className="text-slate-300">Prof. García</strong>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-slate-950/70 border border-slate-800 rounded-xl px-3.5 py-2">
-              <label htmlFor="season-select" className="text-xs text-slate-400 font-medium whitespace-nowrap">
-                Temporada:
-              </label>
-              <select
-                id="season-select"
-                value={selectedSeason}
-                disabled={!isAdmin}
-                onChange={(e) => setSelectedSeason(e.target.value)}
-                className={`bg-transparent text-sm font-semibold text-slate-200 focus:outline-none ${
-                  !isAdmin ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
-                }`}
-              >
-                <option value="s1" className="bg-slate-900">Temporada 1 · Periodo 1</option>
-                <option value="s2" className="bg-slate-900">Temporada 2 · Periodo 2</option>
-                <option value="s3" className="bg-slate-900">Temporada 3 · Periodo 3</option>
-                <option value="s4" className="bg-slate-900">Temporada 4 · Periodo 4</option>
-              </select>
-            </div>
-
-            {isTeacherOrDirector && (
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto scrollbar-thin">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
               <button
-                onClick={handleCreateMission}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-indigo-600/20"
+                key={item.id}
+                onClick={() => {
+                  if (item.id === 'inicio') {
+                    // Redirect back to student panel
+                    navigate({ to: '/dashboard/estudiante' as any });
+                  } else {
+                    setActiveTab(item.id);
+                  }
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200
+                  ${isActive
+                    ? 'bg-[#1E3A8A] text-white shadow-lg shadow-blue-950/50'
+                    : 'text-slate-400 hover:text-white hover:bg-blue-950/30'
+                  }
+                `}
               >
-                <PlusCircle className="w-4 h-4" />
-                Crear Misión
+                <Icon className={`w-5 h-5 ${isActive ? 'text-[#FFD700]' : 'text-slate-400'}`} />
+                <span>{item.label}</span>
               </button>
-            )}
+            );
+          })}
+        </nav>
+
+        {/* Bottom Section */}
+        <div className="px-4 py-2 border-t border-blue-900/30">
+          <div className="bg-[#1E1145] border border-purple-500/30 rounded-xl p-4 text-center shadow-md">
+            <div className="flex justify-center mb-2">
+              <Star className="w-4 h-4 text-[#FFD700] fill-[#FFD700]" />
+            </div>
+            <h4 className="text-xs font-bold text-white">Temporada 3</h4>
+            <p className="text-[11px] text-purple-300 font-medium">La Fuerza del Saber</p>
+            <div className="mt-2.5 inline-block px-2.5 py-0.5 rounded-full bg-purple-950/60 border border-purple-500/20 text-[10px] text-purple-300 font-bold">
+              Termina en 18 días
+            </div>
           </div>
         </div>
 
-        {/* KPIs Principales */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6" aria-label="Métricas de Temporada y Liga">
-          {/* Puntos de Temporada */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg hover:border-slate-700 transition-all">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                <Flame className="w-4 h-4 text-indigo-400" /> Puntos de Temporada
-              </span>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                Periodo 1
-              </span>
-            </div>
-            <div>
-              <p className="text-3xl font-black text-white">
-                14.350 <span className="text-sm font-semibold text-slate-400">/ 20.000 pts</span>
-              </p>
-              <div className="w-full bg-slate-950 rounded-full h-2.5 mt-3 overflow-hidden border border-slate-800">
-                <div className="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" style={{ width: '71.7%' }}></div>
+        {/* User Info */}
+        <div className="p-4 border-t border-blue-900/30 bg-[#070B1E]">
+          <div className="flex items-center gap-3">
+            <SchoolCrest className="w-9 h-9" />
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-white truncate">10-02 Los Invencibles</h4>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                <span className="text-[11px] text-yellow-400 font-black">8.450 pts</span>
               </div>
             </div>
-            <ul className="text-xs space-y-1.5 text-slate-400 pt-1 border-t border-slate-800/80">
-              <li className="flex justify-between">
-                <span>Misiones de Aula:</span> <strong className="text-indigo-300">9.100 / 12.000</strong>
-              </li>
-              <li className="flex justify-between">
-                <span>Institucionales:</span> <strong className="text-purple-300">5.250 / 8.000</strong>
-              </li>
-            </ul>
+            <button onClick={handleLogout} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-900/40">
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
+        </div>
+      </aside>
 
-          {/* Puntos de Liga */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg hover:border-slate-700 transition-all">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                <Award className="w-4 h-4 text-amber-400" /> Puntos de Liga
-              </span>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                Año lectivo
-              </span>
-            </div>
-            <div>
-              <p className="text-3xl font-black text-amber-400">
-                48.920 <span className="text-xs font-semibold text-slate-400">pts acumulados</span>
-              </p>
-              <div className="w-full bg-slate-950 rounded-full h-2.5 mt-3 overflow-hidden border border-slate-800">
-                <div className="bg-amber-400 h-2.5 rounded-full transition-all duration-500" style={{ width: '62%' }}></div>
-              </div>
-            </div>
-            <div className="text-xs text-slate-400 pt-1 border-t border-slate-800/80 flex items-center gap-1.5">
-              <span className="text-emerald-400 font-bold flex items-center gap-0.5">
-                <TrendingUp className="w-3.5 h-3.5" /> +2.480 pts
-              </span>
-              <span>en los últimos 7 días</span>
+      {mobileMenuOpen && (
+        <div onClick={() => setMobileMenuOpen(false)} className="fixed inset-0 bg-[#030712]/50 backdrop-blur-sm z-30 md:hidden" />
+      )}
+
+      {/* 2. MAIN CONTENT */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-700">
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-sans">
+                Estadísticas y Tabla General de Liga
+              </h1>
             </div>
           </div>
-
-          {/* Posición en Ranking */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg hover:border-slate-700 transition-all">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-emerald-400" /> Posición en Ranking
-              </span>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Estable
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-3xl font-black">
-                #2
-              </div>
-              <div className="space-y-0.5">
-                <strong className="text-base font-bold text-white block">2.º de 18 salones</strong>
-                <p className="text-xs text-slate-400">A <span className="text-emerald-300 font-semibold">1.240 pts</span> del 1.º puesto</p>
-                <p className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-                  ▲ Subiste 1 posición
-                </p>
-              </div>
+          <div className="flex items-center gap-4">
+            <SchoolCrest className="w-8 h-8" />
+            <div className="text-left hidden sm:block">
+              <p className="text-xs font-bold text-slate-900">Colegio Mayor</p>
+              <p className="text-[10px] font-semibold text-slate-400">Liga Superior</p>
             </div>
           </div>
-        </section>
+        </header>
 
-        {/* Layout Principal: Misiones y Rankings */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Columna Izquierda / Central: Misiones Activas (2 cols) */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-indigo-400" />
-                  Misiones Activas
-                </h2>
-                {/* Search */}
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar misión..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs placeholder:text-slate-500 text-slate-200 focus:outline-none focus:border-indigo-500 w-full sm:w-64"
-                  />
+        <main className="flex-1 p-6 space-y-8 max-w-6xl mx-auto w-full overflow-y-auto">
+          
+          {/* TAB: RANKING */}
+          {activeTab === 'ranking' && (
+            <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div className="text-left">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2 font-sans">
+                    <Trophy className="w-6 h-6 text-yellow-500" />
+                    Puestos Generales de Liga
+                  </h3>
+                  <p className="text-xs text-slate-400 font-semibold">Toda la comunidad participando activamente</p>
+                </div>
+                
+                <div className="flex bg-[#F1F5F9] p-1 rounded-xl">
+                  <button
+                    onClick={() => setRankingFilter('season')}
+                    className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all ${
+                      rankingFilter === 'season' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'
+                    }`}
+                  >
+                    Temporada 3
+                  </button>
+                  <button
+                    onClick={() => setRankingFilter('league')}
+                    className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all ${
+                      rankingFilter === 'league' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'
+                    }`}
+                  >
+                    Liga General
+                  </button>
                 </div>
               </div>
 
-              {/* Categorías (Filtros) */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-                {['todas', 'Ambiental', 'Deportiva', 'Académica', 'Cultural', 'Convivencia'].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border ${
-                      selectedCategory.toLowerCase() === cat.toLowerCase()
-                        ? 'bg-indigo-600 text-white border-indigo-500'
-                        : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
-                    }`}
-                  >
-                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tarjetas de Misiones */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredMissions.map((mission) => {
-                const isReview = mission.status === 'in_review';
-                const isApproved = mission.status === 'approved';
-
-                return (
-                  <div
-                    key={mission.id}
-                    className={`bg-slate-900/90 border rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-lg transition-all ${
-                      mission.type === 'legendaria'
-                        ? 'border-amber-500/40 bg-amber-950/10'
-                        : mission.type === 'epica'
-                        ? 'border-indigo-500/40 bg-indigo-950/10'
-                        : 'border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                            mission.type === 'legendaria'
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                              : mission.type === 'epica'
-                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                              : mission.type === 'relampago'
-                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                              : 'bg-slate-800 text-slate-300 border-slate-700'
-                          }`}
-                        >
-                          {mission.badgeLabel}
-                        </span>
-                        <span className="text-xs text-slate-400 font-medium">{mission.category}</span>
-                      </div>
-
-                      <h3 className="text-base font-bold text-white">{mission.title}</h3>
-                      <p className="text-xs text-slate-400 leading-relaxed">{mission.description}</p>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <Clock className={`w-3.5 h-3.5 ${mission.urgent ? 'text-rose-400 animate-pulse' : 'text-slate-400'}`} />
-                        <span className={mission.urgent ? 'text-rose-300 font-bold' : ''}>
-                          {mission.timeRemaining}
-                        </span>
-                      </div>
-
-                      <span className="text-xs font-black text-indigo-400">+{mission.rewardPoints} pts</span>
-                    </div>
-
-                    {/* Botones de Acción segun Rol y Estado */}
-                    <div className="pt-2 flex items-center gap-2">
-                      {isApproved ? (
-                        <span className="w-full py-2 bg-emerald-950/60 text-emerald-400 border border-emerald-800/50 text-xs font-semibold rounded-xl text-center flex items-center justify-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Aprobada
-                        </span>
-                      ) : isReview ? (
-                        <div className="w-full flex items-center justify-between gap-2">
-                          <span className="py-2 px-3 bg-amber-950/50 text-amber-300 border border-amber-800/40 text-xs font-semibold rounded-xl flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" /> En Validación
-                          </span>
-                          {isTeacherOrDirector && (
-                            <button
-                              onClick={() => handleValidateEvidence(mission.id)}
-                              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-colors"
-                            >
-                              Validar
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleOpenEvidenceModal(mission)}
-                          className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-colors shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1"
-                        >
-                          <Upload className="w-3.5 h-3.5" /> Subir Evidencias
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Banner Proyecto X */}
-            <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/40 via-slate-900 to-indigo-950/50 p-6 shadow-2xl">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                <div className="space-y-2 max-w-xl">
-                  <span className="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Evento Especial de Temporada
-                  </span>
-                  <h3 className="text-2xl font-black text-white">
-                    Proyecto <span className="text-amber-400">X</span>
-                  </h3>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    Cada salón propone una iniciativa de alto impacto institucional. La propuesta ganadora otorga un bono histórico de <strong className="text-amber-300">5.000 Puntos de Liga</strong>.
+              {/* KPIs de Posición */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 text-left">
+                <div className="p-4 bg-[#F8FAFC] border border-slate-100 rounded-xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Posición de 10-02</span>
+                  <p className="text-xl font-black text-slate-800">#3 Puesto</p>
+                  <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+                    <TrendingUp className="w-3.5 h-3.5" /> +1 Puesto subido
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                  <button
-                    onClick={() => toast.info('Postulación de Proyecto X', { description: 'Completa la propuesta para tu salón 10°A.' })}
-                    className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-colors text-center shadow-lg shadow-amber-500/20"
-                  >
-                    Postular Propuesta
-                  </button>
+                <div className="p-4 bg-[#F8FAFC] border border-slate-100 rounded-xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Diferencia con Líder</span>
+                  <p className="text-xl font-black text-slate-800">-760 pts</p>
+                  <p className="text-[10px] text-slate-400 font-semibold">Frente a 10-01</p>
+                </div>
+
+                <div className="p-4 bg-[#F8FAFC] border border-slate-100 rounded-xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Total Salones</span>
+                  <p className="text-xl font-black text-slate-800">18 Salones</p>
+                  <p className="text-[10px] text-indigo-600 font-bold">Liga Activa</p>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Columna Derecha: Rankings & Estado (1 col) */}
-          <div className="space-y-6">
-            {/* Tabla de Ranking */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-amber-400" /> Ranking de Salones
-                </h3>
-                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  <button
-                    onClick={() => setActiveTab('season')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                      activeTab === 'season' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              {/* Leaderboard Table list */}
+              <div className="space-y-3">
+                {(rankingFilter === 'season' ? LEADERBOARD_SEASON : LEADERBOARD_LEAGUE).map((item) => (
+                  <div
+                    key={item.rank}
+                    className={`flex items-center justify-between p-4 rounded-2xl border ${
+                      item.isMe ? 'bg-[#E8F0FE] border-blue-300' : 'bg-[#F8FAFC] border-slate-100'
                     }`}
                   >
-                    Temporada
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('league')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                      activeTab === 'league' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    Liga
-                  </button>
-                </div>
+                    <div className="flex items-center gap-3 text-left">
+                      <span className="w-7 h-7 rounded-full bg-slate-100 text-xs font-black flex items-center justify-center">
+                        #{item.rank}
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-800">Grado {item.classroom}</h4>
+                    </div>
+                    <span className="text-sm font-black text-slate-800">{item.points}</span>
+                  </div>
+                ))}
               </div>
+            </section>
+          )}
 
-              {/* Tabla */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="text-slate-400 border-b border-slate-800">
-                      <th className="pb-2">#</th>
-                      <th className="pb-2">Salón</th>
-                      <th className="pb-2 text-right">Puntos</th>
-                      <th className="pb-2 text-right">Dif 1.º</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {(activeTab === 'season' ? RANKING_SEASON : RANKING_LEAGUE).map((item) => (
-                      <tr
-                        key={item.rank}
-                        className={`transition-colors ${
-                          item.isMe ? 'bg-indigo-950/40 font-bold text-white' : 'hover:bg-slate-800/40 text-slate-300'
-                        }`}
-                      >
-                        <td className="py-2.5 font-bold">
-                          <span
-                            className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${
-                              item.rank === 1
-                                ? 'bg-amber-500/20 text-amber-300 font-extrabold border border-amber-500/40'
-                                : item.rank === 2
-                                ? 'bg-slate-700 text-slate-200'
-                                : 'text-slate-400'
-                            }`}
-                          >
-                            {item.rank}
-                          </span>
-                        </td>
-                        <td className="py-2.5 flex items-center gap-1.5">
-                          {item.classroom}
-                          {item.isMe && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                              Tu salón
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2.5 text-right font-semibold">{item.points}</td>
-                        <td className="py-2.5 text-right text-slate-400">{item.diff}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        </main>
 
-            {/* Resumen de Validación */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-3">
-              <h4 className="text-sm font-bold text-white">Estado de Validación del Salón</h4>
-              <ul className="space-y-2 text-xs">
-                <li className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
-                  <span className="flex items-center gap-2 text-emerald-400 font-medium">
-                    <CheckCircle2 className="w-4 h-4" /> Aprobadas
-                  </span>
-                  <strong className="text-white font-bold">12</strong>
-                </li>
-                <li className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
-                  <span className="flex items-center gap-2 text-amber-400 font-medium">
-                    <Clock className="w-4 h-4" /> En Validación
-                  </span>
-                  <strong className="text-white font-bold">3</strong>
-                </li>
-                <li className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
-                  <span className="flex items-center gap-2 text-rose-400 font-medium">
-                    <AlertCircle className="w-4 h-4" /> Rechazadas
-                  </span>
-                  <strong className="text-white font-bold">1</strong>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </main>
+        <footer className="bg-white border-t border-slate-200 py-6 text-center shrink-0">
+          <p className="text-xs sm:text-sm text-slate-500 font-semibold">
+            Impulsa lo mejor de ti. Impulsa a tu salón. ❤️🚀
+          </p>
+        </footer>
+      </div>
 
-      {/* Modal Subir Evidencias */}
-      {isModalOpen && activeMission && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  Subir Evidencias
-                </span>
-                <h3 className="text-lg font-bold text-white mt-1">{activeMission.title}</h3>
-                <p className="text-xs text-slate-400">{activeMission.category} · +{activeMission.rewardPoints} pts</p>
-              </div>
-              <button
-                onClick={handleCloseModal}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleEvidenceSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">
-                  Descripción de la evidencia
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={evidenceDesc}
-                  onChange={(e) => setEvidenceDesc(e.target.value)}
-                  placeholder="Cuenta qué hizo el salón y cómo se cumplió la misión..."
-                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Tipo de evidencia</label>
-                  <select
-                    value={evidenceType}
-                    onChange={(e) => setEvidenceType(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option>Fotografías</option>
-                    <option>Video</option>
-                    <option>Documento / informe</option>
-                    <option>Enlace externo</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Responsable del salón</label>
-                  <input
-                    type="text"
-                    required
-                    value={responsibleName}
-                    onChange={(e) => setResponsibleName(e.target.value)}
-                    placeholder="Nombre del estudiante"
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* File Dropzone */}
-              <div className="border-2 border-dashed border-slate-800 rounded-2xl p-6 text-center space-y-2 hover:border-slate-700 transition-colors cursor-pointer bg-slate-950/40">
-                <Upload className="w-6 h-6 text-indigo-400 mx-auto" />
-                <p className="text-xs font-semibold text-slate-200">
-                  Arrastra tus archivos o haz clic para seleccionarlos
-                </p>
-                <p className="text-[11px] text-slate-500">JPG, PNG, PDF o MP4 · máx. 25 MB</p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
-                <span className="text-[11px] text-slate-500">
-                  Validación en máx. 48 h
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-colors shadow-md shadow-indigo-600/20"
-                  >
-                    Enviar Evidencia
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
