@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import logoColegio from "../../assets/cologo.png";
 import { useNavigate } from '@tanstack/react-router';
 import {
   Home,
   Trophy,
   Shield,
-  Target,
   History,
   Bell,
   ChevronRight,
@@ -12,23 +12,135 @@ import {
   X,
   Star,
   Megaphone,
-  BarChart3,
-  Crown,
   Award,
   CheckCircle2,
   Clock,
-  Upload,
-  Info,
-  Sparkles,
   LogOut,
   CheckSquare,
-  Users,
-  AlertCircle
+  AlertCircle,
+  Target,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CreateMissionModal } from '../../components/modals/CreateMissionModal';
+import { MissionsTab } from '../../components/tabs/MissionsTab';
 
 // ==========================================
-// CUSTOM VECTOR ARTWORK / SVGS (PREMIUM BRANDING)
+// TIPOS Y DATOS COMPARTIDOS DEL MÓDULO DIRECTOR
+// Se usan los tipos/datos ya definidos en el proyecto en vez de
+// interfaces locales sueltas, para que todo el módulo quede conectado.
+// ==========================================
+import { ClassroomKPIs, Evidence, Mission } from '../../types/director';
+import {
+  CLASSROOM_ID,
+  mockClassroomKPIs,
+  mockEvidences,
+  mockMissions,
+} from '../../data/directorMockData';
+
+// ==========================================
+// TIPOS LOCALES (propios de esta vista, no forman parte del contrato
+// compartido en types/director.ts)
+// ==========================================
+
+interface Announcement {
+  id: string;
+  title: string;
+  content?: string;
+  message?: string;
+  date: string;
+  priority?: 'alta' | 'media' | 'baja' | 'high' | 'medium' | 'low';
+  author?: string;
+}
+
+interface HistoryEntry {
+  id: string;
+  title: string;
+  details: string;
+  time: string;
+  type: 'approved' | 'rejected';
+}
+
+const INITIAL_HISTORY: HistoryEntry[] = [
+  {
+    id: 'h1',
+    title: 'Misión: Lectores Imparables Aprobada',
+    details: 'Evaluador: Carlos Mendoza · Sumó +1200 pts a 10-02',
+    time: 'Hace 32 min',
+    type: 'approved'
+  },
+  {
+    id: 'h2',
+    title: 'Misión: Reciclaje Masivo Rechazada',
+    details: 'Evaluador: Carlos Mendoza · Foto ilegible enviada por alumno',
+    time: 'Ayer, 4:15 PM',
+    type: 'rejected'
+  }
+];
+
+// ==========================================
+// LOCALSTORAGE KEYS (persistencia del panel del director)
+// ==========================================
+const LS_MISSIONS_KEY = 'director_missions';
+const LS_EVIDENCES_KEY = 'director_evidences';
+const LS_KPIS_KEY = 'director_kpis';
+const LS_HISTORY_LOG_KEY = 'director_history_log';
+
+// ==========================================
+// HELPERS DE INICIALIZACIÓN PEREZOSA (lazy init)
+// Cada helper intenta leer de localStorage; si no existe o falla el parseo,
+// cae de vuelta a los datos de directorMockData.ts (o al historial local).
+// ==========================================
+const loadMissions = (): Mission[] => {
+  try {
+    const stored = localStorage.getItem('school_missions') || localStorage.getItem(LS_MISSIONS_KEY);
+    if (stored) return JSON.parse(stored) as Mission[];
+  } catch (e) {
+    console.error('Error al parsear director_missions de localStorage:', e);
+  }
+  return mockMissions;
+};
+
+const loadEvidences = (): Evidence[] => {
+  try {
+    const stored = localStorage.getItem(LS_EVIDENCES_KEY) || localStorage.getItem('director_submissions');
+    if (stored) return JSON.parse(stored) as Evidence[];
+  } catch (e) {
+    console.error('Error al parsear director_evidences de localStorage:', e);
+  }
+  return mockEvidences;
+};
+
+const loadKpis = (): ClassroomKPIs => {
+  try {
+    const stored = localStorage.getItem(LS_KPIS_KEY);
+    if (stored) return JSON.parse(stored) as ClassroomKPIs;
+  } catch (e) {
+    console.error('Error al parsear director_kpis de localStorage:', e);
+  }
+  return mockClassroomKPIs;
+};
+
+const loadHistoryLog = (): HistoryEntry[] => {
+  try {
+    const stored = localStorage.getItem(LS_HISTORY_LOG_KEY);
+    if (stored) return JSON.parse(stored) as HistoryEntry[];
+  } catch (e) {
+    console.error('Error al parsear director_history_log de localStorage:', e);
+  }
+  return INITIAL_HISTORY;
+};
+
+// ==========================================
+// HELPERS DE NORMALIZACIÓN DE STATUS
+// El tipo Evidence acepta mayúsculas y minúsculas ('PENDING' | 'pending'),
+// así que esta función evita comparaciones frágiles en toda la vista.
+// ==========================================
+const isEvidencePending = (evidence: Evidence): boolean =>
+  evidence.status.toUpperCase() === 'PENDING';
+
+// ==========================================
+// CUSTOM VECTOR ARTWORK / SVGS
 // ==========================================
 
 const ImpulsaLogo: React.FC = () => (
@@ -61,62 +173,26 @@ const ImpulsaLogo: React.FC = () => (
 );
 
 const SchoolCrest: React.FC<{ className?: string }> = ({ className = "w-9 h-9" }) => (
-  <svg className={className} viewBox="0 0 40 45" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M20 2C32 2 37 6 37 18C37 30 28 39 20 43C12 39 3 30 3 18C3 6 8 2 20 2Z"
-      fill="#0f172a"
-      stroke="url(#crestGoldBorder)"
-      strokeWidth="2.5"
-    />
-    <path
-      d="M20 5C29 5 33 8 33 18C33 27 26 35 20 39C14 35 7 27 7 18C7 8 11 5 20 5Z"
-      fill="#1e293b"
-    />
-    <path
-      d="M20 10L22.5 15.5H28.5L24 19L25.8 24.5L20 21L14.2 24.5L16 19L11.5 15.5H17.5L20 10Z"
-      fill="url(#crestGoldInner)"
-    />
-    <path
-      d="M13 28C16 31 24 31 27 28"
-      stroke="url(#crestGoldInner)"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <defs>
-      <linearGradient id="crestGoldBorder" x1="0" y1="0" x2="40" y2="45" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE047" />
-        <stop offset="0.5" stopColor="#EAB308" />
-        <stop offset="1" stopColor="#CA8A04" />
-      </linearGradient>
-      <linearGradient id="crestGoldInner" x1="11.5" y1="10" x2="28.5" y2="24.5" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE047" />
-        <stop offset="1" stopColor="#CA8A04" />
-      </linearGradient>
-    </defs>
-  </svg>
+  <img src={logoColegio} alt="Logo del Colegio" className={className} />
 );
 
 const BannerTrophy: React.FC = () => (
   <div className="relative select-none pointer-events-none flex items-center justify-center shrink-0">
     <svg viewBox="0 0 200 200" className="w-36 h-36 md:w-44 md:h-44 drop-shadow-[0_12px_24px_rgba(245,158,11,0.35)]" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="100" cy="100" r="50" fill="#FBBF24" opacity="0.2" filter="blur(15px)" />
-      {/* Confetti particles */}
       <circle cx="20" cy="50" r="3" fill="#3B82F6" className="animate-pulse" />
       <circle cx="175" cy="40" r="4.5" fill="#EC4899" />
       <rect x="35" y="85" width="7" height="4" rx="1.5" fill="#10B981" transform="rotate(18 35 85)" />
       <rect x="165" y="95" width="5.5" height="5.5" rx="1.5" fill="#F59E0B" transform="rotate(45 165 95)" />
       <path d="M155 55 L161 61 L153 63 Z" fill="#8B5CF6" />
 
-      {/* Pedestal base */}
       <path d="M60 148H140V163C140 165.2 138.2 167 136 167H64C61.8 167 60 165.2 60 163V148Z" fill="url(#pedestalGrad)" />
       <path d="M50 167H150V175C150 177.2 148.2 179 146 179H54C51.8 179 50 177.2 50 175V167Z" fill="#1e293b" />
       <path d="M100 152.5L102 156.5H106L102.8 158.7L104 162.7L100 160.5L96 162.7L97.2 158.7L94 156.5H98L100 152.5Z" fill="#F59E0B" />
 
-      {/* Trophy Stem */}
       <path d="M92 115H108V148H92V115Z" fill="url(#goldGrad)" />
       <path d="M80 115H120V121H80V115Z" fill="url(#goldDarkGrad)" />
 
-      {/* Trophy Cup */}
       <path d="M60 48H140V90C140 112 122 130 100 130C78 130 60 112 60 90V48Z" fill="url(#goldGrad)" />
       <text x="100" y="93" fill="#92400e" fontSize="38" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">1</text>
       
@@ -140,7 +216,6 @@ const BannerTrophy: React.FC = () => (
   </div>
 );
 
-// Quick Access custom SVGs
 const QuickAccessChecklistSVG: React.FC = () => (
   <svg viewBox="0 0 120 120" className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 shrink-0 transition-transform duration-300 hover:scale-105" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="25" y="20" width="70" height="80" rx="8" fill="white" stroke="#22C55E" strokeWidth="5" />
@@ -181,42 +256,241 @@ const QuickAccessTrophySVG: React.FC = () => (
     <path d="M42 29H78V36H42V29Z" fill="#FBBF24" />
   </svg>
 );
+const syncClassroomWithAdmin = (classroomId: string, pointsToAdd: number, isApproval: boolean) => {
+  // 1. Leer los salones guardados
+  const stored = localStorage.getItem('school_classrooms');
+  let classrooms = [];
+  if (stored) {
+    try {
+      classrooms = JSON.parse(stored);
+    } catch (e) {
+      console.error('Error parsing school_classrooms', e);
+    }
+  }
 
-// Mock student submissions for this specific director
-interface Submission {
-  id: string;
-  studentName: string;
-  missionTitle: string;
-  date: string;
-  points: number;
-}
+  if (!classrooms || classrooms.length === 0) {
+    classrooms = [
+      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Carlos Mendoza', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
+      { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
+      { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
+      { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
+    ];
+  }
 
-const INITIAL_SUBMISSIONS: Submission[] = [
-  { id: 'sub1', studentName: 'Juan Pérez', missionTitle: 'Guardianes del Agua', date: 'Hoy, 10:30 AM', points: 400 },
-  { id: 'sub2', studentName: 'María Gómez', missionTitle: 'Aula Limpia Sorpresa', date: 'Ayer', points: 450 },
-  { id: 'sub3', studentName: 'Diana Valderrama', missionTitle: 'Lectores Imparables', date: 'Hace 2 días', points: 1200 },
-];
+  // 2. Buscar el salón del director y actualizar sus datos
+  const updatedClassrooms = classrooms.map((item: any) => {
+    if (item.id === classroomId) {
+      return {
+        ...item,
+        points: item.points + pointsToAdd,
+        approvedMissions: isApproval ? item.approvedMissions + 1 : item.approvedMissions,
+        rejectedMissions: !isApproval ? item.rejectedMissions + 1 : item.rejectedMissions,
+      };
+    }
+    return item;
+  });
+
+  // 3. Guardar el nuevo listado en localStorage
+  localStorage.setItem('school_classrooms', JSON.stringify(updatedClassrooms));
+
+  // 4. Emitir el evento para que AdminDashboard se actualice al instante
+  window.dispatchEvent(new Event('director_data_updated'));
+};
+
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
 
 export const DirectorDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   // State Management
-  const [activeTab, setActiveTab] = useState<'inicio' | 'evidencias' | 'salon' | 'ranking' | 'historial'>('inicio');
-  const [submissions, setSubmissions] = useState<Submission[]>(INITIAL_SUBMISSIONS);
+  const [activeTab, setActiveTab] = useState<'inicio' | 'evidencias' | 'misiones' | 'salon' | 'ranking' | 'historial'>('inicio');
+  const [isCreateMissionOpen, setIsCreateMissionOpen] = useState<boolean>(false);
+
+  // Inicialización perezosa: se lee de localStorage una sola vez al montar.
+  // Si no hay nada guardado (primera visita), se usan los datos de directorMockData.ts.
+  const [missions, setMissions] = useState<Mission[]>(loadMissions);
+  const [evidences, setEvidences] = useState<Evidence[]>(loadEvidences);
+  const [kpis, setKpis] = useState<ClassroomKPIs>(loadKpis);
+  const [historyLog, setHistoryLog] = useState<HistoryEntry[]>(loadHistoryLog);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [bannerIndex, setBannerIndex] = useState<number>(0);
   const [rankingFilter, setRankingFilter] = useState<'season' | 'league'>('season');
 
+  // ==========================================
+  // SINCRONIZACIÓN AUTOMÁTICA CON LOCALSTORAGE
+  // Cada vez que cambian misiones, evidencias, KPIs o el historial,
+  // se vuelven a escribir en localStorage para que sobrevivan a un
+  // recargue de página o cierre de sesión.
+  // ==========================================
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_MISSIONS_KEY, JSON.stringify(missions));
+    } catch (e) {
+      console.error('Error al guardar director_missions en localStorage:', e);
+    }
+  }, [missions]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_EVIDENCES_KEY, JSON.stringify(evidences));
+    } catch (e) {
+      console.error('Error al guardar director_evidences en localStorage:', e);
+    }
+  }, [evidences]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KPIS_KEY, JSON.stringify(kpis));
+    } catch (e) {
+      console.error('Error al guardar director_kpis en localStorage:', e);
+    }
+  }, [kpis]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_HISTORY_LOG_KEY, JSON.stringify(historyLog));
+    } catch (e) {
+      console.error('Error al guardar director_history_log en localStorage:', e);
+    }
+  }, [historyLog]);
+
+  // Lectura de Anuncios Publicados desde Administración
+  useEffect(() => {
+    const fetchAnnouncements = () => {
+      const stored = localStorage.getItem('school_announcements');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as Announcement[];
+          setAnnouncements(parsed);
+        } catch (e) {
+          console.error("Error al parsear los anuncios de localStorage:", e);
+        }
+      }
+    };
+
+      fetchAnnouncements();
+    window.addEventListener('storage', fetchAnnouncements);
+    return () => window.removeEventListener('storage', fetchAnnouncements);
+  }, []);
+
+  // Escuchar cuando el estudiante envía una nueva evidencia en tiempo real
+  useEffect(() => {
+    const fetchEvidences = () => {
+      const updatedEvidences = loadEvidences();
+      setEvidences(updatedEvidences);
+      const pendingCount = updatedEvidences.filter(isEvidencePending).length;
+      setKpis((prev) => ({
+        ...prev,
+        pendingReviews: pendingCount,
+      }));
+    };
+
+    window.addEventListener('storage', fetchEvidences);
+    window.addEventListener('student_evidence_submitted', fetchEvidences);
+
+    return () => {
+      window.removeEventListener('storage', fetchEvidences);
+      window.removeEventListener('student_evidence_submitted', fetchEvidences);
+    };
+  }, []);
+
+  const [classrooms, setClassrooms] = useState<any[]>(() => {
+    const stored = localStorage.getItem('school_classrooms');
+    return stored ? JSON.parse(stored) : [
+      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Carlos Mendoza', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
+      { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
+      { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
+      { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
+    ];
+  });
+
+  useEffect(() => {
+    const loadSharedClassrooms = () => {
+      const stored = localStorage.getItem('school_classrooms');
+      if (stored) {
+        try {
+          const list = JSON.parse(stored);
+          setClassrooms(list);
+          const myClassroom = list.find((c: any) => c.id === CLASSROOM_ID);
+          if (myClassroom) {
+            setKpis((prev) => ({
+              ...prev,
+              totalPointsAwarded: myClassroom.points,
+            }));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    loadSharedClassrooms();
+    window.addEventListener('storage', loadSharedClassrooms);
+    window.addEventListener('director_data_updated', loadSharedClassrooms);
+    window.addEventListener('global_system_updated', loadSharedClassrooms);
+
+    return () => {
+      window.removeEventListener('storage', loadSharedClassrooms);
+      window.removeEventListener('director_data_updated', loadSharedClassrooms);
+      window.removeEventListener('global_system_updated', loadSharedClassrooms);
+    };
+  }, []);
+
+  // Evidencias pendientes por revisar (derivado, no se persiste aparte)
+  const pendingEvidences = useMemo(
+    () => evidences.filter(isEvidencePending),
+    [evidences]
+  );
+
+  // Puntaje del salón: viene directo del estado de salones compartido
+  const classroomPoints = useMemo(() => {
+    const found = classrooms.find((c: any) => c.id === CLASSROOM_ID);
+    return found ? found.points : kpis.totalPointsAwarded;
+  }, [classrooms, kpis.totalPointsAwarded]);
+
+  // Recálculo dinámico de Leaderboard en base a los salones compartidos
+  const seasonLeaderboard = useMemo(() => {
+    return [...classrooms]
+      .sort((a, b) => b.points - a.points)
+      .map((item: any, idx: number) => ({
+        classroom: item.id || item.name,
+        points: item.points,
+        isMe: item.id === CLASSROOM_ID,
+        rank: idx + 1,
+      }));
+  }, [classrooms]);
+
+  const leagueLeaderboard = useMemo(() => {
+    return [...classrooms]
+      .sort((a, b) => b.points - a.points)
+      .map((item: any, idx: number) => ({
+        classroom: item.id || item.name,
+        points: item.points + 10000,
+        isMe: item.id === CLASSROOM_ID,
+        rank: idx + 1,
+      }));
+  }, [classrooms]);
+
+  const currentRank = useMemo(() => {
+    const found = seasonLeaderboard.find((item) => item.isMe);
+    return found ? found.rank : 1;
+  }, [seasonLeaderboard]);
+
   const bannerSlides = [
     {
       tag: '📢 PANEL DE TUTORÍA',
-      title: '¡Tu salón 10-02 está en 3er lugar de la temporada!',
+      title: `¡Tu salón ${CLASSROOM_ID} está en el Puesto #${currentRank} de la temporada!`,
       text: 'Ayuda a tus estudiantes a validar evidencias y subir en la liga.',
       buttonText: 'Ver evidencias pendientes >',
     },
     {
       tag: '🔥 COMPETENCIA INTERCURSOS',
-      title: '¡10-01 lidera con 9.210 puntos esta semana!',
+      title: `¡${CLASSROOM_ID} acumula ${classroomPoints.toLocaleString('es-CO')} pts!`,
       text: 'Incentiva a tu clase a realizar la misión ambiental activa.',
       buttonText: 'Ver misiones activas >',
     },
@@ -224,34 +498,130 @@ export const DirectorDashboard: React.FC = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setBannerIndex((prev) => (prev + 1) % bannerSlides.length);
+      setBannerIndex((prev: number) => (prev + 1) % bannerSlides.length);
     }, 6000);
     return () => clearInterval(timer);
   }, [bannerSlides.length]);
 
   const handleLogout = () => {
     localStorage.removeItem('userRole');
+    // Nota: las claves director_missions, director_evidences, director_kpis
+    // y director_history_log NO se borran aquí a propósito, para que el
+    // estado persista aunque el usuario cierre sesión y vuelva a entrar.
     toast.success('Sesión cerrada con éxito');
     navigate({ to: '/login' });
   };
 
-  const handleApprove = (id: string, name: string, mission: string, points: number) => {
-    setSubmissions((prev) => prev.filter((s) => s.id !== id));
-    toast.success(`Evidencia de ${name} aprobada`, {
-      description: `Se han sumado +${points} puntos al salón 10-02.`,
+  // Busca los puntos de la misión asociada a una evidencia
+  const getMissionForEvidence = (evidence: Evidence): Mission | undefined =>
+    missions.find((m: Mission) => m.id === evidence.missionId);
+
+  // Lógica funcional de Aprobación
+  const handleApprove = (evidence: Evidence) => {
+    const earnedPoints = missions.find((m: Mission) => m.id === evidence.missionId)?.points ?? (evidence as any).points ?? 0;
+
+    setEvidences((prev: Evidence[]) =>
+      prev.map((e: Evidence) => (e.id === evidence.id ? { ...e, status: 'APPROVED' } : e))
+    );
+
+    setKpis((prev: ClassroomKPIs) => ({
+      ...prev,
+      pendingReviews: Math.max(0, prev.pendingReviews - 1),
+      totalPointsAwarded: prev.totalPointsAwarded + earnedPoints,
+    }));
+
+    // Registrar en Historial
+    setHistoryLog((prev: HistoryEntry[]) => [
+      {
+        id: `h_${Date.now()}`,
+        title: `Misión: ${evidence.missionTitle} Aprobada (${evidence.studentName})`,
+        details: `Evaluador: Carlos Mendoza · Sumó +${earnedPoints} pts a ${CLASSROOM_ID}`,
+        time: 'Justo ahora',
+        type: 'approved'
+      },
+      ...prev
+    ]);
+
+    toast.success(`Evidencia de ${evidence.studentName} aprobada`, {
+      description: `Se han sumado +${earnedPoints} puntos al salón ${CLASSROOM_ID}. Total: ${(classroomPoints + earnedPoints).toLocaleString('es-CO')} pts.`,
     });
+
+    syncClassroomWithAdmin(CLASSROOM_ID, earnedPoints, true);
   };
 
-  const handleReject = (id: string, name: string) => {
-    setSubmissions((prev) => prev.filter((s) => s.id !== id));
-    toast.error(`Evidencia de ${name} rechazada`, {
+  // Lógica funcional de Rechazo
+  const handleReject = (evidence: Evidence) => {
+    setEvidences((prev: Evidence[]) =>
+      prev.map((e: Evidence) => (e.id === evidence.id ? { ...e, status: 'REJECTED' } : e))
+    );
+
+    setKpis((prev: ClassroomKPIs) => ({
+      ...prev,
+      pendingReviews: Math.max(0, prev.pendingReviews - 1),
+    }));
+
+    // Registrar en Historial
+    setHistoryLog((prev: HistoryEntry[]) => [
+      {
+        id: `h_${Date.now()}`,
+        title: `Misión: ${evidence.missionTitle} Rechazada (${evidence.studentName})`,
+        details: 'Evaluador: Carlos Mendoza · Evidencia no cumple con los criterios',
+        time: 'Justo ahora',
+        type: 'rejected'
+      },
+      ...prev
+    ]);
+
+    toast.error(`Evidencia de ${evidence.studentName} rechazada`, {
       description: 'Se ha notificado al estudiante para corregir la entrega.',
     });
+
+    syncClassroomWithAdmin(CLASSROOM_ID, 0, false);
+  };
+
+  const handleCreateMission = (missionData: Omit<Mission, 'id' | 'classroomId' | 'status'>) => {
+    const newMission: Mission = {
+      id: `mis_${Date.now()}`,
+      title: missionData.title,
+      description: missionData.description,
+      points: Number(missionData.points),
+      dueDate: missionData.dueDate,
+      evidenceType: missionData.evidenceType || 'link',
+      classroomId: CLASSROOM_ID,
+      status: 'ACTIVE',
+    };
+
+    const updatedMissions = [newMission, ...missions];
+    setMissions(updatedMissions);
+
+    try {
+      localStorage.setItem('school_missions', JSON.stringify(updatedMissions));
+      localStorage.setItem(LS_MISSIONS_KEY, JSON.stringify(updatedMissions));
+    } catch (e) {
+      console.error('Error guardando misiones en localStorage:', e);
+    }
+
+    window.dispatchEvent(new Event('mission_created'));
+    toast.success('¡Misión creada y publicada para los estudiantes!');
+  };
+
+  const handleDeleteMission = (id: string) => {
+    const updated = missions.filter((m) => m.id !== id);
+    setMissions(updated);
+    try {
+      localStorage.setItem('school_missions', JSON.stringify(updated));
+      localStorage.setItem(LS_MISSIONS_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Error al borrar misión:', e);
+    }
+    window.dispatchEvent(new Event('mission_created'));
+    toast.success('Misión eliminada');
   };
 
   const menuItems = [
     { id: 'inicio', label: 'Inicio', icon: Home },
     { id: 'evidencias', label: 'Revisar Evidencias', icon: CheckSquare },
+    { id: 'misiones', label: 'Misiones del Salón', icon: Target },
     { id: 'salon', label: 'Mi salón', icon: Shield },
     { id: 'ranking', label: 'Ranking', icon: Trophy },
     { id: 'historial', label: 'Historial', icon: History },
@@ -297,9 +667,9 @@ export const DirectorDashboard: React.FC = () => {
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'text-[#FFD700]' : 'text-slate-400'}`} />
                 <span>{item.label}</span>
-                {item.id === 'evidencias' && submissions.length > 0 && (
+                {item.id === 'evidencias' && pendingEvidences.length > 0 && (
                   <span className="ml-auto bg-[#EF4444] text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full">
-                    {submissions.length}
+                    {pendingEvidences.length}
                   </span>
                 )}
               </button>
@@ -321,13 +691,13 @@ export const DirectorDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* User Info (Bottom-most) */}
+        {/* User Info */}
         <div className="p-4 border-t border-blue-900/30 bg-[#070B1E]">
           <div className="flex items-center gap-3">
             <SchoolCrest className="w-9 h-9" />
             <div className="flex-1 min-w-0">
               <h4 className="text-xs font-bold text-white truncate">Carlos Mendoza</h4>
-              <p className="text-[10px] text-slate-400 font-semibold truncate">Director de 10-02</p>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">Director de {CLASSROOM_ID}</p>
             </div>
             <button onClick={handleLogout} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-900/40">
               <LogOut className="w-4 h-4" />
@@ -351,15 +721,15 @@ export const DirectorDashboard: React.FC = () => {
               <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                 ¡Buenos días! Prof. Carlos
               </h1>
-              <span className="text-lg animate-bounce">👋👋</span>
+              <span className="text-lg animate-bounce">👋</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <SchoolCrest className="w-8 h-8" />
-            <div className="text-left hidden sm:block">
-              <p className="text-xs font-bold text-slate-900">Colegio Mayor</p>
-              <p className="text-[10px] font-semibold text-slate-400">Director de Grupo</p>
+            <div className="text-right hidden sm:block">
+              <p className="text-xs font-bold text-slate-900">{CLASSROOM_ID}: {classroomPoints.toLocaleString('es-CO')} pts</p>
+              <p className="text-[10px] font-semibold text-emerald-600">Puesto #{currentRank} en Ranking</p>
             </div>
+            <SchoolCrest className="w-8 h-8" />
           </div>
         </header>
 
@@ -368,31 +738,91 @@ export const DirectorDashboard: React.FC = () => {
           {/* TAB 1: INICIO */}
           {activeTab === 'inicio' && (
             <>
-              {/* Banner */}
+              {/* Banner Carousel */}
               <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white shadow-xl">
                 <div className="p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
                   <div className="space-y-4 text-left max-w-lg">
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-[10px] sm:text-xs font-extrabold uppercase">
-                      {bannerSlides[bannerIndex].tag}
+                      {bannerSlides[bannerIndex]?.tag}
                     </span>
                     <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
-                      {bannerSlides[bannerIndex].title}
+                      {bannerSlides[bannerIndex]?.title}
                     </h2>
                     <p className="text-xs sm:text-sm text-indigo-100 font-medium">
-                      {bannerSlides[bannerIndex].text}
+                      {bannerSlides[bannerIndex]?.text}
                     </p>
                     <button
                       onClick={() => setActiveTab(bannerIndex === 0 ? 'evidencias' : 'salon')}
-                      className="px-5 py-2.5 bg-white text-indigo-700 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md"
+                      className="px-5 py-2.5 bg-white text-indigo-700 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md hover:bg-slate-50"
                     >
-                      {bannerSlides[bannerIndex].buttonText}
+                      {bannerSlides[bannerIndex]?.buttonText}
                     </button>
                   </div>
                   <BannerTrophy />
                 </div>
               </section>
 
-              {/* Quick Access */}
+              {/* SECCIÓN DE ANUNCIOS INSTITUCIONALES */}
+              <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm text-left space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <Megaphone className="w-5 h-5 text-amber-500" />
+                    Comunicados de Administración
+                  </h3>
+                  <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                    {announcements.length} {announcements.length === 1 ? 'anuncio' : 'anuncios'}
+                  </span>
+                </div>
+
+                {announcements.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                    <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs text-slate-500 font-semibold">No hay comunicados oficiales publicados por la administración en este momento.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {announcements.map((item) => {
+                      const priority = item.priority?.toLowerCase() || 'baja';
+                      const badgeColors = 
+                        priority === 'alta' || priority === 'high' 
+                          ? 'bg-rose-100 text-rose-700 border-rose-200'
+                          : priority === 'media' || priority === 'medium'
+                          ? 'bg-amber-100 text-amber-700 border-amber-200'
+                          : 'bg-blue-100 text-blue-700 border-blue-200';
+
+                      return (
+                        <div 
+                          key={item.id} 
+                          className="p-4 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl hover:border-indigo-200 transition-all space-y-2 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${badgeColors}`}>
+                                Prioridad {priority}
+                              </span>
+                              <span className="text-[10px] font-medium text-slate-400 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {item.date}
+                              </span>
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-900 leading-snug">{item.title}</h4>
+                            <p className="text-xs text-slate-600 font-medium line-clamp-3">
+                              {item.content || item.message}
+                            </p>
+                          </div>
+                          {item.author && (
+                            <p className="text-[10px] text-slate-400 font-semibold pt-2 border-t border-slate-100">
+                              Publicado por: {item.author}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              {/* Accesos Rápidos */}
               <section className="space-y-4">
                 <h3 className="text-lg font-black text-slate-900 tracking-tight text-left">Accesos rápidos de gestión</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -403,7 +833,7 @@ export const DirectorDashboard: React.FC = () => {
                     <div className="relative z-10 max-w-[65%] space-y-1.5">
                       <h4 className="text-base font-black text-[#1E4D2B]">Revisar entregas</h4>
                       <p className="text-xs text-green-700/80 font-semibold leading-normal">
-                        Hay {submissions.length} evidencias de tus estudiantes pendientes de validación.
+                        Hay {pendingEvidences.length} evidencias de tus estudiantes pendientes de validación.
                       </p>
                     </div>
                     <button
@@ -419,9 +849,9 @@ export const DirectorDashboard: React.FC = () => {
                       <QuickAccessShieldSVG />
                     </div>
                     <div className="relative z-10 max-w-[65%] space-y-1.5">
-                      <h4 className="text-base font-black text-[#1A4B8E]">Mi salón 10-02</h4>
+                      <h4 className="text-base font-black text-[#1A4B8E]">Mi salón {CLASSROOM_ID}</h4>
                       <p className="text-xs text-blue-700/80 font-semibold leading-normal">
-                        Consulta la historia, el puntaje y estadísticas de tu salón tutorado.
+                        Consulta la historia, el puntaje ({classroomPoints.toLocaleString('es-CO')} pts) y estadísticas.
                       </p>
                     </div>
                     <button
@@ -439,7 +869,7 @@ export const DirectorDashboard: React.FC = () => {
                     <div className="relative z-10 max-w-[65%] space-y-1.5">
                       <h4 className="text-base font-black text-[#855B14]">Ranking de liga</h4>
                       <p className="text-xs text-yellow-800/80 font-semibold leading-normal">
-                        Compara el puntaje de 10-02 frente a los otros grados académicos.
+                        {CLASSROOM_ID} ocupa la posición #{currentRank} en el ranking general.
                       </p>
                     </div>
                     <button
@@ -452,17 +882,17 @@ export const DirectorDashboard: React.FC = () => {
                 </div>
               </section>
 
-              {/* Activity Section */}
+              {/* Actividad Reciente */}
               <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm text-left">
-                <h3 className="text-lg font-black text-[#0A0F24] mb-4">Última actividad del grupo 10-02</h3>
+                <h3 className="text-lg font-black text-[#0A0F24] mb-4">Última actividad del grupo {CLASSROOM_ID}</h3>
                 <div className="space-y-3.5">
                   <div className="flex items-center gap-3 p-3 bg-[#F8FAFC] border border-slate-100 rounded-2xl">
                     <div className="w-9 h-9 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center">
                       <CheckCircle2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm font-bold text-slate-800">Se completó la misión: Lectores Imparables</p>
-                      <p className="text-[10px] text-slate-400">Sumó +1.200 pts de temporada · Hace 32 min</p>
+                      <p className="text-xs sm:text-sm font-bold text-slate-800">Puntaje global actualizado: {classroomPoints.toLocaleString('es-CO')} pts</p>
+                      <p className="text-[10px] text-slate-400">Salón {CLASSROOM_ID} · Puesto #{currentRank} en la tabla institucional</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-[#F8FAFC] border border-slate-100 rounded-2xl">
@@ -470,8 +900,8 @@ export const DirectorDashboard: React.FC = () => {
                       <Award className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm font-bold text-slate-800">10-02 ascendió a la 3ª posición general</p>
-                      <p className="text-[10px] text-slate-400">Puntaje total actualizado a 8.450 pts · Hace 2 horas</p>
+                      <p className="text-xs sm:text-sm font-bold text-slate-800">Misiones validadas en la sesión</p>
+                      <p className="text-[10px] text-slate-400">{historyLog.length} acciones registradas en el historial</p>
                     </div>
                   </div>
                 </div>
@@ -482,48 +912,64 @@ export const DirectorDashboard: React.FC = () => {
           {/* TAB 2: EVIDENCIAS */}
           {activeTab === 'evidencias' && (
             <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-left">
-              <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                  <CheckSquare className="w-6 h-6 text-green-500" />
-                  Revisión de Evidencias Presentadas (10-02)
-                </h3>
-                <p className="text-xs text-slate-400 font-semibold">Aprueba o rechaza evidencias de misiones subidas por tus alumnos</p>
+              <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <CheckSquare className="w-6 h-6 text-green-500" />
+                    Revisión de Evidencias Presentadas ({CLASSROOM_ID})
+                  </h3>
+                  <p className="text-xs text-slate-400 font-semibold">Aprueba o rechaza evidencias para actualizar el puntaje general del salón</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold self-start">
+                  Total del salón: {classroomPoints.toLocaleString('es-CO')} pts
+                </div>
               </div>
 
-              {submissions.length === 0 ? (
-                <div className="text-center py-10 space-y-2">
+              {pendingEvidences.length === 0 ? (
+                <div className="text-center py-12 space-y-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
                   <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
                   <h4 className="text-sm font-bold text-slate-800">¡Todo al día!</h4>
                   <p className="text-xs text-slate-400 font-semibold">No hay evidencias pendientes por evaluar en tu salón.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100 border border-slate-200/60 rounded-2xl overflow-hidden bg-[#F8FAFC]">
-                  {submissions.map((sub) => (
-                    <div key={sub.id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 transition-colors hover:bg-slate-50">
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-slate-800">{sub.studentName}</p>
-                        <p className="text-xs text-slate-500 font-semibold">
-                          Misión: <strong className="text-indigo-600 font-bold">{sub.missionTitle}</strong>
-                        </p>
-                        <p className="text-[10px] text-slate-400">Entregado: {sub.date}</p>
+                  {pendingEvidences.map((evidence: Evidence) => {
+                    const mission = getMissionForEvidence(evidence);
+                    const points = mission?.points ?? (evidence as any).points ?? 0;
+                    const submittedDate = evidence.submittedAt || (evidence as any).date || 'Justo ahora';
+                    return (
+                      <div key={evidence.id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 transition-colors hover:bg-slate-50">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-slate-800">{evidence.studentName}</p>
+                            <span className="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                              +{points} pts
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-semibold">
+                            Misión: <strong className="text-indigo-600 font-bold">{evidence.missionTitle}</strong>
+                          </p>
+                          <p className="text-[10px] text-slate-400">Entregado: {submittedDate}</p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleReject(evidence)}
+                            className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-xl transition-all"
+                          >
+                            Rechazar
+                          </button>
+                          <button
+                            onClick={() => handleApprove(evidence)}
+                            className="px-3.5 py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Aprobar (+{points} pts)
+                          </button>
+                        </div>
                       </div>
-                      
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleReject(sub.id, sub.studentName)}
-                          className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-xl transition-all"
-                        >
-                          Rechazar
-                        </button>
-                        <button
-                          onClick={() => handleApprove(sub.id, sub.studentName, sub.missionTitle, sub.points)}
-                          className="px-3.5 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-xl transition-all"
-                        >
-                          Aprobar (+{sub.points} pts)
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>
@@ -533,31 +979,36 @@ export const DirectorDashboard: React.FC = () => {
           {activeTab === 'salon' && (
             <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-left">
               <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Detalles del Salón Tutorado (10-02)</h3>
-                <p className="text-xs text-slate-400 font-semibold">Monitorea el rendimiento del salón en la temporada</p>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Detalles del Salón Tutorado ({CLASSROOM_ID})</h3>
+                <p className="text-xs text-slate-400 font-semibold">Monitorea el rendimiento y avance acumulado del grupo</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="p-5 bg-[#F8FAFC] rounded-2xl border border-slate-100 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-slate-500">Puntaje Temporada 3</span>
-                    <span className="text-xs font-bold text-yellow-600">8.450 pts</span>
+                    <span className="text-xs font-black text-amber-600">{classroomPoints.toLocaleString('es-CO')} pts</span>
                   </div>
-                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-yellow-400 h-full rounded-full" style={{ width: '84.5%' }} />
+                  <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-amber-400 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${Math.min(100, (classroomPoints / 10000) * 100)}%` }} 
+                    />
                   </div>
-                  <p className="text-[10px] text-slate-400 leading-relaxed">Puesto #3 a nivel institucional.</p>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Ubicado en la posición <strong>#{currentRank}</strong> a nivel institucional frente a una meta de 10.000 pts.
+                  </p>
                 </div>
 
                 <div className="p-5 bg-[#F8FAFC] rounded-2xl border border-slate-100 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-slate-500">Alumnos Activos</span>
-                    <span className="text-xs font-bold text-blue-600">28 Estudiantes</span>
+                    <span className="text-xs font-bold text-blue-600">{kpis.totalStudents} Estudiantes</span>
                   </div>
-                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-blue-500 h-full rounded-full" style={{ width: '100%' }} />
+                  <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                    <div className="bg-blue-500 h-full rounded-full" style={{ width: `${Math.min(100, kpis.completionRate)}%` }} />
                   </div>
-                  <p className="text-[10px] text-slate-400 leading-relaxed">100% de estudiantes han participado en alguna misión.</p>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">{kpis.completionRate}% de los alumnos han completado al menos 1 misión esta temporada.</p>
                 </div>
               </div>
             </section>
@@ -572,7 +1023,7 @@ export const DirectorDashboard: React.FC = () => {
                     <Trophy className="w-6 h-6 text-yellow-500" />
                     Puestos de Liga de Salón
                   </h3>
-                  <p className="text-xs text-slate-400 font-semibold">Tutor Carlos Mendoza · 10-02</p>
+                  <p className="text-xs text-slate-400 font-semibold">Tutor Carlos Mendoza · {CLASSROOM_ID}</p>
                 </div>
                 
                 <div className="flex bg-[#F1F5F9] p-1 rounded-xl">
@@ -596,20 +1047,35 @@ export const DirectorDashboard: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                {(rankingFilter === 'season' ? LEADERBOARD_SEASON : LEADERBOARD_LEAGUE).map((item) => (
+                {(rankingFilter === 'season' ? seasonLeaderboard : leagueLeaderboard).map((item) => (
                   <div
-                    key={item.rank}
-                    className={`flex items-center justify-between p-4 rounded-2xl border ${
-                      item.isMe ? 'bg-[#E8F0FE] border-blue-300' : 'bg-[#F8FAFC] border-slate-100'
+                    key={item.classroom}
+                    className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                      item.isMe 
+                        ? 'bg-[#E8F0FE] border-blue-400 shadow-sm' 
+                        : 'bg-[#F8FAFC] border-slate-100'
                     }`}
                   >
                     <div className="flex items-center gap-3 text-left">
-                      <span className="w-7 h-7 rounded-full bg-slate-100 text-xs font-black flex items-center justify-center">
+                      <span className={`w-8 h-8 rounded-full text-xs font-black flex items-center justify-center ${
+                        item.rank === 1 ? 'bg-amber-400 text-amber-950' :
+                        item.rank === 2 ? 'bg-slate-300 text-slate-800' :
+                        item.rank === 3 ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
                         #{item.rank}
                       </span>
-                      <h4 className="text-sm font-bold text-slate-800">Grado {item.classroom}</h4>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">
+                          Grado {item.classroom} {item.isMe && '(Mi Salón)'}
+                        </h4>
+                        {item.isMe && (
+                          <span className="text-[10px] text-blue-600 font-extrabold">Actualizado en vivo</span>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-sm font-black text-slate-800">{item.points}</span>
+                    <span className="text-sm font-black text-slate-800">
+                      {item.points.toLocaleString('es-CO')} pts
+                    </span>
                   </div>
                 ))}
               </div>
@@ -621,44 +1087,65 @@ export const DirectorDashboard: React.FC = () => {
             <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-left">
               <div className="border-b border-slate-100 pb-4">
                 <h3 className="text-xl font-black text-slate-900 tracking-tight">Historial de Validaciones</h3>
-                <p className="text-xs text-slate-400 font-semibold font-sans">Misiones validadas o rechazadas históricamente por este tutor</p>
+                <p className="text-xs text-slate-400 font-semibold font-sans">Registro de misiones aprobadas o rechazadas históricamente por este tutor</p>
               </div>
 
-              <div className="relative pl-6 border-l border-slate-100 space-y-8">
-                <div className="relative">
-                  <span className="absolute -left-[35px] top-1 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white bg-emerald-50 text-emerald-500 shadow-sm">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </span>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-black text-slate-800">Misión: Lectores Imparables Aprobada</h4>
-                    <p className="text-[11px] text-slate-400 font-medium">Evaluador: Carlos Mendoza · Sumó +1200 pts a 10-02</p>
-                    <p className="text-[10px] text-slate-400">Hace 32 min</p>
+              <div className="relative pl-6 border-l border-slate-100 space-y-6">
+                {historyLog.map((log) => (
+                  <div key={log.id} className="relative">
+                    <span className={`absolute -left-[35px] top-1 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm ${
+                      log.type === 'approved' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'
+                    }`}>
+                      {log.type === 'approved' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                    </span>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-slate-800">{log.title}</h4>
+                      <p className="text-[11px] text-slate-500 font-medium">{log.details}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{log.time}</p>
+                    </div>
                   </div>
-                </div>
-
-                <div className="relative">
-                  <span className="absolute -left-[35px] top-1 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white bg-rose-50 text-rose-500 shadow-sm">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                  </span>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-black text-slate-800">Misión: Taller Estructura de Datos Rechazado</h4>
-                    <p className="text-[11px] text-slate-400 font-medium">Evaluador: Carlos Mendoza · Notificación enviada a Daniel R.</p>
-                    <p className="text-[10px] text-slate-400">Hace 4 horas</p>
-                  </div>
-                </div>
+                ))}
               </div>
+            </section>
+          )}
+
+          {activeTab === 'misiones' && (
+            <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-left">
+              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <Target className="w-6 h-6 text-indigo-500" />
+                    Misiones y Desafíos del Salón ({CLASSROOM_ID})
+                  </h3>
+                  <p className="text-xs text-slate-400 font-semibold font-sans">Publica y gestiona misiones activas para que los alumnos envíen evidencias</p>
+                </div>
+                <button
+                  onClick={() => setIsCreateMissionOpen(true)}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nueva Misión
+                </button>
+              </div>
+
+              <MissionsTab
+                missions={missions}
+                onOpenCreateModal={() => setIsCreateMissionOpen(true)}
+                onDeleteMission={handleDeleteMission}
+              />
             </section>
           )}
 
         </main>
 
-        <footer className="bg-white border-t border-slate-200 py-6 text-center shrink-0">
-          <p className="text-xs sm:text-sm text-slate-500 font-semibold">
-            Impulsa lo mejor de ti. Impulsa a tu salón. ❤️🚀
-          </p>
-        </footer>
+        <CreateMissionModal
+          isOpen={isCreateMissionOpen}
+          onClose={() => setIsCreateMissionOpen(false)}
+          onCreateMission={handleCreateMission}
+        />
       </div>
-
     </div>
   );
 };
+
+export default DirectorDashboard;

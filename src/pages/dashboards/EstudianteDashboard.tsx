@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import logoColegio from "../../assets/cologo.png";
 import {
   Home,
   Trophy,
@@ -63,41 +64,7 @@ const ImpulsaLogo: React.FC = () => (
 );
 
 const SchoolCrest: React.FC<{ className?: string }> = ({ className = "w-9 h-9" }) => (
-  <svg className={className} viewBox="0 0 40 45" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* Shield Shape */}
-    <path
-      d="M20 2C32 2 37 6 37 18C37 30 28 39 20 43C12 39 3 30 3 18C3 6 8 2 20 2Z"
-      fill="#0f172a"
-      stroke="url(#crestGoldBorder)"
-      strokeWidth="2.5"
-    />
-    <path
-      d="M20 5C29 5 33 8 33 18C33 27 26 35 20 39C14 35 7 27 7 18C7 8 11 5 20 5Z"
-      fill="#1e293b"
-    />
-    {/* Golden Details */}
-    <path
-      d="M20 10L22.5 15.5H28.5L24 19L25.8 24.5L20 21L14.2 24.5L16 19L11.5 15.5H17.5L20 10Z"
-      fill="url(#crestGoldInner)"
-    />
-    <path
-      d="M13 28C16 31 24 31 27 28"
-      stroke="url(#crestGoldInner)"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <defs>
-      <linearGradient id="crestGoldBorder" x1="0" y1="0" x2="40" y2="45" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE047" />
-        <stop offset="0.5" stopColor="#EAB308" />
-        <stop offset="1" stopColor="#CA8A04" />
-      </linearGradient>
-      <linearGradient id="crestGoldInner" x1="11.5" y1="10" x2="28.5" y2="24.5" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE047" />
-        <stop offset="1" stopColor="#CA8A04" />
-      </linearGradient>
-    </defs>
-  </svg>
+  <img src={logoColegio} alt="Logo del Colegio" className={className} />
 );
 
 const BannerTrophy: React.FC = () => (
@@ -371,6 +338,68 @@ const INITIAL_MISSIONS: MissionItem[] = [
   },
 ];
 
+const loadStudentMissions = (): MissionItem[] => {
+  try {
+    const schoolMissionsRaw = localStorage.getItem('school_missions') || localStorage.getItem('director_missions');
+    const storedMissions = localStorage.getItem('student_missions');
+    const storedEvidencesRaw = localStorage.getItem('school_submissions') || localStorage.getItem('director_evidences') || localStorage.getItem('director_submissions');
+    
+    let baseMissions: MissionItem[] = INITIAL_MISSIONS;
+
+    if (schoolMissionsRaw) {
+      try {
+        const parsedSchool = JSON.parse(schoolMissionsRaw);
+        if (Array.isArray(parsedSchool) && parsedSchool.length > 0) {
+          baseMissions = parsedSchool.map((m: any) => ({
+            id: m.id || `mis_${Date.now()}`,
+            title: m.title || 'Misión sin título',
+            description: m.description || '',
+            category: m.category || 'Ambiental',
+            points: Number(m.points) || 100,
+            timeRemaining: m.dueDate ? `Límite: ${m.dueDate}` : (m.timeRemaining || 'Activa'),
+            status: (m.status === 'ACTIVE' || m.status === 'active') ? 'active' as const : (m.status === 'completed' ? 'completed' as const : 'active' as const),
+            badge: m.badge || 'Desafío',
+          }));
+        }
+      } catch (e) {
+        console.error('Error parseando school_missions:', e);
+      }
+    } else if (storedMissions) {
+      try {
+        baseMissions = JSON.parse(storedMissions) as MissionItem[];
+      } catch (e) {
+        console.error('Error parseando student_missions:', e);
+      }
+    }
+
+    if (storedEvidencesRaw) {
+      try {
+        const evidences = JSON.parse(storedEvidencesRaw);
+        baseMissions = baseMissions.map((mission: MissionItem) => {
+          const ev = evidences.find((e: any) => e.missionId === mission.id);
+          if (!ev) return mission;
+          const statusUpper = (ev.status || '').toUpperCase();
+          if (statusUpper === 'APPROVED') {
+            return { ...mission, status: 'completed' as const };
+          } else if (statusUpper === 'PENDING') {
+            return { ...mission, status: 'in_review' as const };
+          } else if (statusUpper === 'REJECTED') {
+            return { ...mission, status: 'active' as const };
+          }
+          return mission;
+        });
+      } catch (e) {
+        console.error('Error parseando evidencias:', e);
+      }
+    }
+
+    return baseMissions;
+  } catch (e) {
+    console.error('Error al parsear misiones de localStorage:', e);
+  }
+  return INITIAL_MISSIONS;
+};
+
 export const EstudianteDashboard: React.FC = () => {
   const navigate = useNavigate();
 
@@ -380,12 +409,96 @@ export const EstudianteDashboard: React.FC = () => {
   const [bannerIndex, setBannerIndex] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [rankingFilter, setRankingFilter] = useState<'season' | 'league'>('season');
-  const [missionsList, setMissionsList] = useState<MissionItem[]>(INITIAL_MISSIONS);
+  const [missionsList, setMissionsList] = useState<MissionItem[]>(loadStudentMissions);
   
   // Evidence Modal State
   const [selectedMission, setSelectedMission] = useState<MissionItem | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [evidenceText, setEvidenceText] = useState<string>('');
+
+  // Persistir cambios en missionsList en localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('student_missions', JSON.stringify(missionsList));
+    } catch (e) {
+      console.error('Error al guardar student_missions en localStorage:', e);
+    }
+  }, [missionsList]);
+
+  const [classrooms, setClassrooms] = useState<any[]>(() => {
+    const stored = localStorage.getItem('school_classrooms');
+    return stored ? JSON.parse(stored) : [
+      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Carlos Mendoza', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
+      { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
+      { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
+      { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
+    ];
+  });
+
+  const sortedClassrooms = useMemo(() => {
+    return [...classrooms].sort((a: any, b: any) => b.points - a.points);
+  }, [classrooms]);
+
+  const myClassroom = useMemo(() => {
+    return classrooms.find((c: any) => c.id === '10-02') || {
+      id: '10-02',
+      name: '10-02 Los Invencibles',
+      points: 12700,
+      approvedMissions: 40,
+      rejectedMissions: 5,
+    };
+  }, [classrooms]);
+
+  const myClassroomPoints = myClassroom.points;
+  const myClassroomApprovedMissions = myClassroom.approvedMissions ?? 40;
+
+  const myClassroomRank = useMemo(() => {
+    const idx = sortedClassrooms.findIndex((c: any) => c.id === '10-02');
+    return idx >= 0 ? idx + 1 : 1;
+  }, [sortedClassrooms]);
+
+  useEffect(() => {
+    const loadSharedClassrooms = () => {
+      const stored = localStorage.getItem('school_classrooms');
+      if (stored) {
+        try {
+          setClassrooms(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    loadSharedClassrooms();
+    window.addEventListener('storage', loadSharedClassrooms);
+    window.addEventListener('director_data_updated', loadSharedClassrooms);
+    window.addEventListener('global_system_updated', loadSharedClassrooms);
+    return () => {
+      window.removeEventListener('storage', loadSharedClassrooms);
+      window.removeEventListener('director_data_updated', loadSharedClassrooms);
+      window.removeEventListener('global_system_updated', loadSharedClassrooms);
+    };
+  }, []);
+
+  // Escuchar cuando el director crea misiones, aprueba/rechaza evidencias o cambia el localStorage
+  useEffect(() => {
+    const syncMissionsWithStorage = () => {
+      setMissionsList(loadStudentMissions());
+    };
+
+    window.addEventListener('storage', syncMissionsWithStorage);
+    window.addEventListener('mission_created', syncMissionsWithStorage);
+    window.addEventListener('director_data_updated', syncMissionsWithStorage);
+    window.addEventListener('student_evidence_submitted', syncMissionsWithStorage);
+    window.addEventListener('global_system_updated', syncMissionsWithStorage);
+
+    return () => {
+      window.removeEventListener('storage', syncMissionsWithStorage);
+      window.removeEventListener('mission_created', syncMissionsWithStorage);
+      window.removeEventListener('director_data_updated', syncMissionsWithStorage);
+      window.removeEventListener('student_evidence_submitted', syncMissionsWithStorage);
+      window.removeEventListener('global_system_updated', syncMissionsWithStorage);
+    };
+  }, []);
 
   // Auto-play banner slides every 6 seconds
   useEffect(() => {
@@ -432,9 +545,45 @@ export const EstudianteDashboard: React.FC = () => {
     setMissionsList((prev) =>
       prev.map((m) => (m.id === selectedMission.id ? { ...m, status: 'in_review' } : m))
     );
+
+    const newSubmission = {
+      id: `sub_${Date.now()}`,
+      studentName: 'Juan Pérez',
+      studentId: 'std_1',
+      missionId: selectedMission.id,
+      missionTitle: selectedMission.title,
+      content: evidenceText || 'Evidencia enviada por el estudiante',
+      submittedAt: 'Justo ahora',
+      date: 'Justo ahora',
+      evidenceType: 'text' as const,
+      points: selectedMission.points,
+      status: 'PENDING'
+    };
+
+    try {
+      const existingRaw = localStorage.getItem('school_submissions') || localStorage.getItem('director_evidences') || localStorage.getItem('director_submissions');
+      let existingList = [];
+      if (existingRaw) {
+        try {
+          existingList = JSON.parse(existingRaw);
+        } catch (err) {
+          console.error('Error al parsear evidencias existentes de localStorage:', err);
+        }
+      }
+      const updatedList = [newSubmission, ...existingList];
+      localStorage.setItem('school_submissions', JSON.stringify(updatedList));
+      localStorage.setItem('director_evidences', JSON.stringify(updatedList));
+      localStorage.setItem('director_submissions', JSON.stringify(updatedList));
+    } catch (err) {
+      console.error('Error al guardar evidencia en localStorage:', err);
+    }
+
+    // Disparar evento global para actualización en tiempo real en los Dashboards del Director y Docente
+    window.dispatchEvent(new Event('student_evidence_submitted'));
+    window.dispatchEvent(new Event('global_system_updated'));
     
-    toast.success('Evidencia enviada con éxito', {
-      description: 'El docente revisará y validará tu evidencia pronto.',
+    toast.success('¡Evidencia enviada con éxito!', {
+      description: 'El docente y director revisarán y validarán tu evidencia pronto.',
     });
     setModalOpen(false);
     setEvidenceText('');
@@ -526,7 +675,7 @@ export const EstudianteDashboard: React.FC = () => {
               <h4 className="text-xs font-bold text-white truncate leading-snug">10-02 Los Invencibles</h4>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                <span className="text-[11px] text-yellow-400 font-black">8.450 pts</span>
+                <span className="text-[11px] text-yellow-400 font-black">{myClassroomPoints.toLocaleString('es-CO')} pts</span>
               </div>
             </div>
             {/* Quick Logout Button */}
@@ -613,15 +762,18 @@ export const EstudianteDashboard: React.FC = () => {
                 <div className="absolute -bottom-20 left-10 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl" />
 
                 <div className="p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-                  <div className="space-y-4 text-left max-w-lg">
+                 <div className="space-y-4 text-left max-w-lg">
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-[10px] sm:text-xs font-extrabold tracking-wide uppercase">
-                      {BANNER_SLIDES[bannerIndex].tag} 
+                      {/* Se agregó ?. aquí */}
+                      {BANNER_SLIDES[bannerIndex]?.tag} 
                     </span>
                     <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight transition-all duration-300">
-                      {BANNER_SLIDES[bannerIndex].title}
+                      {/* Se agregó ?. aquí */}
+                      {BANNER_SLIDES[bannerIndex]?.title}
                     </h2>
                     <p className="text-xs sm:text-sm text-indigo-100 font-medium">
-                      {BANNER_SLIDES[bannerIndex].text}
+                      {/* Se agregó ?. aquí */}
+                      {BANNER_SLIDES[bannerIndex]?.text}
                     </p>
                     <button
                       onClick={() => {
@@ -632,9 +784,11 @@ export const EstudianteDashboard: React.FC = () => {
                       }}
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-indigo-50 text-indigo-700 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
                     >
-                      <span>{BANNER_SLIDES[bannerIndex].buttonText}</span>
+                      {/* Se agregó ?. aquí */}
+                      <span>{BANNER_SLIDES[bannerIndex]?.buttonText}</span>
                     </button>
-                  </div>
+                </div>
+
 
                   <BannerTrophy />
                 </div>
@@ -839,48 +993,57 @@ export const EstudianteDashboard: React.FC = () => {
 
               {/* Leaderboard Table list */}
               <div className="space-y-3">
-                {(rankingFilter === 'season' ? LEADERBOARD_SEASON : LEADERBOARD_LEAGUE).map((item) => (
-                  <div
-                    key={item.rank}
-                    className={`flex items-center justify-between p-4 rounded-2xl border transition-all
-                      ${item.isMe
-                        ? 'bg-[#E8F0FE] border-blue-300 ring-2 ring-blue-400/20'
-                        : 'bg-[#F8FAFC] border-slate-100 hover:border-slate-200'
-                      }
-                    `}
-                  >
-                    <div className="flex items-center gap-4 text-left">
-                      {/* Rank Indicator */}
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-inner
-                        ${item.rank === 1 ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : ''}
-                        ${item.rank === 2 ? 'bg-slate-200 text-slate-700' : ''}
-                        ${item.rank === 3 ? 'bg-amber-100 text-amber-800' : ''}
-                        ${item.rank > 3 ? 'bg-slate-100 text-slate-500' : ''}
-                      `}>
-                        #{item.rank}
-                      </span>
+                {sortedClassrooms.map((item: any, index: number) => {
+                  const rank = index + 1;
+                  const isMe = item.id === '10-02';
+                  const isLeader = index === 0;
+                  const displayPoints = rankingFilter === 'season' ? item.points : item.points + 10000;
 
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                          <span>Grado {item.classroom}</span>
-                          {item.isMe && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-extrabold">
-                              Tu salón
-                            </span>
-                          )}
-                          {item.isLeader && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-400 text-yellow-950 font-black">
-                              Líder 👑
-                            </span>
-                          )}
-                        </h4>
-                        <p className="text-[11px] text-slate-400 font-semibold">Colegio Mayor Primario</p>
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between p-4 rounded-2xl border transition-all
+                        ${isMe
+                          ? 'bg-[#E8F0FE] border-blue-300 ring-2 ring-blue-400/20'
+                          : 'bg-[#F8FAFC] border-slate-100 hover:border-slate-200'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-4 text-left">
+                        {/* Rank Indicator */}
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-inner
+                          ${rank === 1 ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : ''}
+                          ${rank === 2 ? 'bg-slate-200 text-slate-700' : ''}
+                          ${rank === 3 ? 'bg-amber-100 text-amber-800' : ''}
+                          ${rank > 3 ? 'bg-slate-100 text-slate-500' : ''}
+                        `}>
+                          #{rank}
+                        </span>
+
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <span>Grado {item.name || item.id}</span>
+                            {isMe && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-extrabold">
+                                Tu salón
+                              </span>
+                            )}
+                            {isLeader && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-400 text-yellow-950 font-black">
+                                Líder 👑
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-[11px] text-slate-400 font-semibold">Colegio Mayor Primario</p>
+                        </div>
                       </div>
-                    </div>
 
-                    <span className="text-sm font-black text-slate-800 pr-2">{item.points}</span>
-                  </div>
-                ))}
+                      <span className="text-sm font-black text-slate-800 pr-2">
+                        {displayPoints.toLocaleString('es-CO')} pts
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Informative tips box */}
@@ -907,29 +1070,36 @@ export const EstudianteDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="bg-[#F8FAFC] border border-slate-100 p-5 rounded-2xl">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400">Total Puntos Temporada</span>
-                  <h4 className="text-2xl font-black text-slate-900 mt-1">8.450 pts</h4>
+                  <h4 className="text-2xl font-black text-slate-900 mt-1">{myClassroomPoints.toLocaleString('es-CO')} pts</h4>
                   <div className="w-full bg-slate-200 h-2 rounded-full mt-3 overflow-hidden">
-                    <div className="bg-yellow-400 h-full rounded-full" style={{ width: '84.5%' }} />
+                    <div
+                      className="bg-yellow-400 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, (myClassroomPoints / 10000) * 100)}%` }}
+                    />
                   </div>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-1">Meta mensual: 10.000 pts</p>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-1">Meta mensual: 10.000 pts · Posición #{myClassroomRank}</p>
                 </div>
                 
                 <div className="bg-[#F8FAFC] border border-slate-100 p-5 rounded-2xl">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400">Puntos de Liga Totales</span>
-                  <h4 className="text-2xl font-black text-slate-900 mt-1">41.300 LP</h4>
+                  <h4 className="text-2xl font-black text-slate-900 mt-1">{(myClassroomPoints + 28000).toLocaleString('es-CO')} LP</h4>
                   <div className="w-full bg-slate-200 h-2 rounded-full mt-3 overflow-hidden">
-                    <div className="bg-blue-500 h-full rounded-full" style={{ width: '75%' }} />
+                    <div
+                      className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, ((myClassroomPoints + 28000) / 50000) * 100)}%` }}
+                    />
                   </div>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-1">Acumulado anual</p>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-1">Acumulado anual · {myClassroomApprovedMissions} misiones aprobadas</p>
                 </div>
 
                 <div className="bg-[#F8FAFC] border border-slate-100 p-5 rounded-2xl">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400">Títulos Descubiertos</span>
-                  <h4 className="text-2xl font-black text-slate-900 mt-1">3 Secretos</h4>
+                  <h4 className="text-2xl font-black text-slate-900 mt-1">{myClassroomApprovedMissions > 40 ? '4 Títulos' : '3 Secretos'}</h4>
                   <div className="flex gap-1.5 mt-3.5">
                     <span className="text-base" title="Guardianes Eco">🌱</span>
                     <span className="text-base" title="Lectores Pro">📚</span>
                     <span className="text-base" title="Salón Impecable">✨</span>
+                    {myClassroomApprovedMissions > 40 && <span className="text-base" title="Líderes de Desafío">🏆</span>}
                   </div>
                 </div>
               </div>

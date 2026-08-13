@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import logoColegio from "../../assets/cologo.png";
 import { useNavigate } from '@tanstack/react-router';
 import {
   Home,
@@ -60,39 +61,7 @@ const ImpulsaLogo: React.FC = () => (
 );
 
 const SchoolCrest: React.FC<{ className?: string }> = ({ className = "w-9 h-9" }) => (
-  <svg className={className} viewBox="0 0 40 45" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M20 2C32 2 37 6 37 18C37 30 28 39 20 43C12 39 3 30 3 18C3 6 8 2 20 2Z"
-      fill="#0f172a"
-      stroke="url(#crestGoldBorder)"
-      strokeWidth="2.5"
-    />
-    <path
-      d="M20 5C29 5 33 8 33 18C33 27 26 35 20 39C14 35 7 27 7 18C7 8 11 5 20 5Z"
-      fill="#1e293b"
-    />
-    <path
-      d="M20 10L22.5 15.5H28.5L24 19L25.8 24.5L20 21L14.2 24.5L16 19L11.5 15.5H17.5L20 10Z"
-      fill="url(#crestGoldInner)"
-    />
-    <path
-      d="M13 28C16 31 24 31 27 28"
-      stroke="url(#crestGoldInner)"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <defs>
-      <linearGradient id="crestGoldBorder" x1="0" y1="0" x2="40" y2="45" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE047" />
-        <stop offset="0.5" stopColor="#EAB308" />
-        <stop offset="1" stopColor="#CA8A04" />
-      </linearGradient>
-      <linearGradient id="crestGoldInner" x1="11.5" y1="10" x2="28.5" y2="24.5" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE047" />
-        <stop offset="1" stopColor="#CA8A04" />
-      </linearGradient>
-    </defs>
-  </svg>
+  <img src={logoColegio} alt="Logo del Colegio" className={className} />
 );
 
 const BannerTrophy: React.FC = () => (
@@ -162,6 +131,55 @@ export const GeneralDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ranking' | 'inicio'>('ranking');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [rankingFilter, setRankingFilter] = useState<'season' | 'league'>('season');
+
+  const [classrooms, setClassrooms] = useState<any[]>(() => {
+    const stored = localStorage.getItem('school_classrooms');
+    return stored ? JSON.parse(stored) : [
+      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Carlos Mendoza', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
+      { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
+      { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
+      { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
+    ];
+  });
+
+  useEffect(() => {
+    const loadSharedClassrooms = () => {
+      const stored = localStorage.getItem('school_classrooms');
+      if (stored) {
+        try {
+          setClassrooms(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    loadSharedClassrooms();
+    window.addEventListener('storage', loadSharedClassrooms);
+    window.addEventListener('director_data_updated', loadSharedClassrooms);
+    window.addEventListener('global_system_updated', loadSharedClassrooms);
+    return () => {
+      window.removeEventListener('storage', loadSharedClassrooms);
+      window.removeEventListener('director_data_updated', loadSharedClassrooms);
+      window.removeEventListener('global_system_updated', loadSharedClassrooms);
+    };
+  }, []);
+
+  const sortedClassrooms = useMemo(() => {
+    return [...classrooms].sort((a, b) => b.points - a.points);
+  }, [classrooms]);
+
+  const myClassroomIndex = useMemo(() => {
+    const idx = sortedClassrooms.findIndex((c: any) => c.id === '10-02');
+    return idx >= 0 ? idx + 1 : 1;
+  }, [sortedClassrooms]);
+
+  const leader = useMemo(() => sortedClassrooms[0], [sortedClassrooms]);
+  const myClassroom = useMemo(() => classrooms.find((c: any) => c.id === '10-02'), [classrooms]);
+
+  const pointsDiffWithLeader = useMemo(() => {
+    if (!leader || !myClassroom) return 0;
+    return leader.points - myClassroom.points;
+  }, [leader, myClassroom]);
 
   const handleLogout = () => {
     localStorage.removeItem('userRole');
@@ -246,7 +264,9 @@ export const GeneralDashboard: React.FC = () => {
               <h4 className="text-xs font-bold text-white truncate">10-02 Los Invencibles</h4>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                <span className="text-[11px] text-yellow-400 font-black">8.450 pts</span>
+                <span className="text-[11px] text-yellow-400 font-black">
+                  {(myClassroom?.points ?? 12700).toLocaleString('es-CO')} pts
+                </span>
               </div>
             </div>
             <button onClick={handleLogout} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-900/40">
@@ -320,41 +340,45 @@ export const GeneralDashboard: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 text-left">
                 <div className="p-4 bg-[#F8FAFC] border border-slate-100 rounded-xl space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Posición de 10-02</span>
-                  <p className="text-xl font-black text-slate-800">#3 Puesto</p>
+                  <p className="text-xl font-black text-slate-800">#{myClassroomIndex} Puesto</p>
                   <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
-                    <TrendingUp className="w-3.5 h-3.5" /> +1 Puesto subido
+                    <TrendingUp className="w-3.5 h-3.5" /> En tiempo real
                   </p>
                 </div>
 
                 <div className="p-4 bg-[#F8FAFC] border border-slate-100 rounded-xl space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Diferencia con Líder</span>
-                  <p className="text-xl font-black text-slate-800">-760 pts</p>
-                  <p className="text-[10px] text-slate-400 font-semibold">Frente a 10-01</p>
+                  <p className="text-xl font-black text-slate-800">
+                    {pointsDiffWithLeader === 0 ? '¡Es el Líder!' : `-${pointsDiffWithLeader.toLocaleString('es-CO')} pts`}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-semibold">Frente a {leader?.name || 'Líder'}</p>
                 </div>
 
                 <div className="p-4 bg-[#F8FAFC] border border-slate-100 rounded-xl space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Total Salones</span>
-                  <p className="text-xl font-black text-slate-800">18 Salones</p>
+                  <p className="text-xl font-black text-slate-800">{classrooms.length} Salones</p>
                   <p className="text-[10px] text-indigo-600 font-bold">Liga Activa</p>
                 </div>
               </div>
 
               {/* Leaderboard Table list */}
               <div className="space-y-3">
-                {(rankingFilter === 'season' ? LEADERBOARD_SEASON : LEADERBOARD_LEAGUE).map((item) => (
+                {sortedClassrooms.map((item: any, index: number) => (
                   <div
-                    key={item.rank}
+                    key={item.id}
                     className={`flex items-center justify-between p-4 rounded-2xl border ${
-                      item.isMe ? 'bg-[#E8F0FE] border-blue-300' : 'bg-[#F8FAFC] border-slate-100'
+                      item.id === '10-02' ? 'bg-[#E8F0FE] border-blue-300' : 'bg-[#F8FAFC] border-slate-100'
                     }`}
                   >
                     <div className="flex items-center gap-3 text-left">
                       <span className="w-7 h-7 rounded-full bg-slate-100 text-xs font-black flex items-center justify-center">
-                        #{item.rank}
+                        #{index + 1}
                       </span>
-                      <h4 className="text-sm font-bold text-slate-800">Grado {item.classroom}</h4>
+                      <h4 className="text-sm font-bold text-slate-800">Grado {item.name}</h4>
                     </div>
-                    <span className="text-sm font-black text-slate-800">{item.points}</span>
+                    <span className="text-sm font-black text-slate-800">
+                      {(rankingFilter === 'season' ? item.points : item.points + 10000).toLocaleString('es-CO')} pts
+                    </span>
                   </div>
                 ))}
               </div>

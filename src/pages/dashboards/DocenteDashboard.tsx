@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logoColegio from "../../assets/cologo.png";
 import { useNavigate } from '@tanstack/react-router';
 import {
   Home,
@@ -59,39 +60,7 @@ const ImpulsaLogo: React.FC = () => (
 );
 
 const SchoolCrest: React.FC<{ className?: string }> = ({ className = "w-9 h-9" }) => (
-  <svg className={className} viewBox="0 0 40 45" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M20 2C32 2 37 6 37 18C37 30 28 39 20 43C12 39 3 30 3 18C3 6 8 2 20 2Z"
-      fill="#0f172a"
-      stroke="url(#crestGoldBorder)"
-      strokeWidth="2.5"
-    />
-    <path
-      d="M20 5C29 5 33 8 33 18C33 27 26 35 20 39C14 35 7 27 7 18C7 8 11 5 20 5Z"
-      fill="#1e293b"
-    />
-    <path
-      d="M20 10L22.5 15.5H28.5L24 19L25.8 24.5L20 21L14.2 24.5L16 19L11.5 15.5H17.5L20 10Z"
-      fill="url(#crestGoldInner)"
-    />
-    <path
-      d="M13 28C16 31 24 31 27 28"
-      stroke="url(#crestGoldInner)"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <defs>
-      <linearGradient id="crestGoldBorder" x1="0" y1="0" x2="40" y2="45" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE047" />
-        <stop offset="0.5" stopColor="#EAB308" />
-        <stop offset="1" stopColor="#CA8A04" />
-      </linearGradient>
-      <linearGradient id="crestGoldInner" x1="11.5" y1="10" x2="28.5" y2="24.5" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE047" />
-        <stop offset="1" stopColor="#CA8A04" />
-      </linearGradient>
-    </defs>
-  </svg>
+  <img src={logoColegio} alt="Logo del Colegio" className={className} />
 );
 
 const BannerTrophy: React.FC = () => (
@@ -186,6 +155,42 @@ export const DocenteDashboard: React.FC = () => {
   const [taskClass, setTaskClass] = useState<string>('10-02');
   const [taskPoints, setTaskPoints] = useState<string>('300');
 
+  const [classrooms, setClassrooms] = useState<any[]>(() => {
+    const stored = localStorage.getItem('school_classrooms');
+    return stored ? JSON.parse(stored) : [
+      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Carlos Mendoza', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
+      { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
+      { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
+      { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
+    ];
+  });
+
+  useEffect(() => {
+    const loadSharedClassrooms = () => {
+      const stored = localStorage.getItem('school_classrooms');
+      if (stored) {
+        try {
+          setClassrooms(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    loadSharedClassrooms();
+    window.addEventListener('storage', loadSharedClassrooms);
+    window.addEventListener('director_data_updated', loadSharedClassrooms);
+    window.addEventListener('global_system_updated', loadSharedClassrooms);
+    return () => {
+      window.removeEventListener('storage', loadSharedClassrooms);
+      window.removeEventListener('director_data_updated', loadSharedClassrooms);
+      window.removeEventListener('global_system_updated', loadSharedClassrooms);
+    };
+  }, []);
+
+  const sortedClassrooms = React.useMemo(() => {
+    return [...classrooms].sort((a, b) => b.points - a.points);
+  }, [classrooms]);
+
   const bannerSlides = [
     {
       tag: '🎓 GESTIÓN ACADÉMICA',
@@ -208,6 +213,78 @@ export const DocenteDashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, [bannerSlides.length]);
 
+  const [submissions, setSubmissions] = useState<any[]>(() => {
+    const stored = localStorage.getItem('school_submissions') || localStorage.getItem('director_evidences');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      {
+        id: 'sub_demo_1',
+        studentName: 'Juan Pérez',
+        studentId: 'std_1',
+        missionId: 'mis_1',
+        missionTitle: 'Taller 1 - Estructuras de Datos',
+        content: 'Repositorio GitHub y documentación enviada por el alumno',
+        submittedAt: 'Hace 15 min',
+        date: 'Hace 15 min',
+        evidenceType: 'link',
+        points: 300,
+        classroomId: '10-02',
+        status: 'PENDING'
+      },
+      {
+        id: 'sub_demo_2',
+        studentName: 'Sofía Pinzón',
+        studentId: 'std_2',
+        missionId: 'mis_2',
+        missionTitle: 'Reciclaje Masivo',
+        content: 'Foto de bolsas ecológicas en el punto limpio',
+        submittedAt: 'Hace 1 hora',
+        date: 'Hace 1 hora',
+        evidenceType: 'image',
+        points: 400,
+        classroomId: '10-02',
+        status: 'PENDING'
+      }
+    ];
+  });
+
+  const pendingSubmissions = React.useMemo(() => {
+    return submissions.filter((s: any) => (s.status || '').toUpperCase() === 'PENDING');
+  }, [submissions]);
+
+  useEffect(() => {
+    const loadSubmissionsData = () => {
+      const stored = localStorage.getItem('school_submissions') || localStorage.getItem('director_evidences');
+      if (stored) {
+        try {
+          setSubmissions(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    loadSubmissionsData();
+
+    window.addEventListener('storage', loadSubmissionsData);
+    window.addEventListener('student_evidence_submitted', loadSubmissionsData);
+    window.addEventListener('director_data_updated', loadSubmissionsData);
+    window.addEventListener('global_system_updated', loadSubmissionsData);
+
+    return () => {
+      window.removeEventListener('storage', loadSubmissionsData);
+      window.removeEventListener('student_evidence_submitted', loadSubmissionsData);
+      window.removeEventListener('director_data_updated', loadSubmissionsData);
+      window.removeEventListener('global_system_updated', loadSubmissionsData);
+    };
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('userRole');
     toast.success('Sesión cerrada con éxito');
@@ -220,6 +297,40 @@ export const DocenteDashboard: React.FC = () => {
       toast.error('Completa los campos obligatorios');
       return;
     }
+
+    const newMission = {
+      id: `mis_${Date.now()}`,
+      title: taskTitle.trim(),
+      description: taskDesc.trim(),
+      points: Number(taskPoints),
+      dueDate: 'En 7 días',
+      evidenceType: 'link' as const,
+      classroomId: taskClass,
+      status: 'ACTIVE',
+      category: 'Académica' as const,
+      badge: 'Desafío Docente',
+    };
+
+    try {
+      const storedMissionsRaw = localStorage.getItem('school_missions') || localStorage.getItem('director_missions');
+      let existing: any[] = [];
+      if (storedMissionsRaw) {
+        try {
+          existing = JSON.parse(storedMissionsRaw);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      const updatedMissions = [newMission, ...existing];
+      localStorage.setItem('school_missions', JSON.stringify(updatedMissions));
+      localStorage.setItem('director_missions', JSON.stringify(updatedMissions));
+    } catch (err) {
+      console.error('Error al guardar misión en localStorage:', err);
+    }
+
+    window.dispatchEvent(new Event('mission_created'));
+    window.dispatchEvent(new Event('global_system_updated'));
+
     toast.success('Nueva misión publicada', {
       description: `Misión "${taskTitle}" asignada al grupo ${taskClass} por +${taskPoints} pts.`,
     });
@@ -227,11 +338,49 @@ export const DocenteDashboard: React.FC = () => {
     setTaskDesc('');
   };
 
-  const handleVerifySubmission = (id: string, className: string, taskTitle: string) => {
-    setTaskSubmissions((prev) => prev.filter((ts) => ts.id !== id));
-    toast.success(`Evidencias de "${taskTitle}" validadas`, {
-      description: `Los puntos han sido sumados al salón ${className}.`,
-    });
+  const handleVerifySubmission = (submissionId: string, classroomId: string = '10-02', points: number = 300) => {
+    try {
+      const stored = localStorage.getItem('school_submissions') || localStorage.getItem('director_evidences');
+      let currentSubmissions = stored ? JSON.parse(stored) : submissions;
+
+      const target = currentSubmissions.find((s: any) => s.id === submissionId);
+      const pointsToAdd = target?.points ? Number(target.points) : points;
+      const targetClassroom = target?.classroomId || classroomId;
+
+      const updatedSubmissions = currentSubmissions.map((sub: any) => 
+        sub.id === submissionId ? { ...sub, status: 'APPROVED' } : sub
+      );
+
+      setSubmissions(updatedSubmissions);
+      localStorage.setItem('school_submissions', JSON.stringify(updatedSubmissions));
+      localStorage.setItem('director_evidences', JSON.stringify(updatedSubmissions));
+      localStorage.setItem('director_submissions', JSON.stringify(updatedSubmissions));
+
+      // Update classroom points in 'school_classrooms'
+      const storedClassrooms = localStorage.getItem('school_classrooms');
+      let classroomsList = storedClassrooms ? JSON.parse(storedClassrooms) : classrooms;
+      const updatedClassrooms = classroomsList.map((c: any) => {
+        if (c.id === targetClassroom || c.id === '10-02') {
+          return {
+            ...c,
+            points: (c.points || 0) + pointsToAdd,
+            approvedMissions: (c.approvedMissions || 0) + 1
+          };
+        }
+        return c;
+      });
+      localStorage.setItem('school_classrooms', JSON.stringify(updatedClassrooms));
+      setClassrooms(updatedClassrooms);
+
+      window.dispatchEvent(new Event('director_data_updated'));
+      window.dispatchEvent(new Event('global_system_updated'));
+
+      toast.success('Evidencia validada', {
+        description: `Se han sumado +${pointsToAdd} pts al salón ${targetClassroom}.`,
+      });
+    } catch (e) {
+      console.error('Error al validar evidencia', e);
+    }
   };
 
   const menuItems = [
@@ -282,9 +431,9 @@ export const DocenteDashboard: React.FC = () => {
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'text-[#FFD700]' : 'text-slate-400'}`} />
                 <span>{item.label}</span>
-                {item.id === 'validar' && taskSubmissions.length > 0 && (
+                {item.id === 'validar' && pendingSubmissions.length > 0 && (
                   <span className="ml-auto bg-[#EF4444] text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full">
-                    {taskSubmissions.length}
+                    {pendingSubmissions.length}
                   </span>
                 )}
               </button>
@@ -358,24 +507,25 @@ export const DocenteDashboard: React.FC = () => {
                 <div className="p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
                   <div className="space-y-4 text-left max-w-lg">
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-[10px] sm:text-xs font-extrabold uppercase">
-                      {bannerSlides[bannerIndex].tag}
+                      {bannerSlides[bannerIndex]?.tag}
                     </span>
                     <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
-                      {bannerSlides[bannerIndex].title}
+                      {bannerSlides[bannerIndex]?.title}
                     </h2>
                     <p className="text-xs sm:text-sm text-indigo-100 font-medium">
-                      {bannerSlides[bannerIndex].text}
+                      {bannerSlides[bannerIndex]?.text}
                     </p>
                     <button
                       onClick={() => setActiveTab(bannerIndex === 0 ? 'crear' : 'validar')}
                       className="px-5 py-2.5 bg-white text-indigo-700 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md"
                     >
-                      {bannerSlides[bannerIndex].buttonText}
+                      {bannerSlides[bannerIndex]?.buttonText}
                     </button>
                   </div>
                   <BannerTrophy />
                 </div>
               </section>
+
 
               {/* Quick Access */}
               <section className="space-y-4">
@@ -525,7 +675,7 @@ export const DocenteDashboard: React.FC = () => {
                 <p className="text-xs text-slate-400 font-semibold font-sans">Otorga los puntos una vez revisada la evidencia del salón</p>
               </div>
 
-              {taskSubmissions.length === 0 ? (
+              {pendingSubmissions.length === 0 ? (
                 <div className="text-center py-10 space-y-2">
                   <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
                   <h4 className="text-sm font-bold text-slate-800">¡Limpieza total!</h4>
@@ -533,24 +683,29 @@ export const DocenteDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3.5">
-                  {taskSubmissions.map((ts) => (
+                  {pendingSubmissions.map((ts: any) => (
                     <div
                       key={ts.id}
-                      className="flex justify-between items-center p-4 bg-[#F8FAFC] border border-slate-100 rounded-2xl hover:border-slate-200 transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#F8FAFC] border border-slate-100 rounded-2xl hover:border-slate-200 transition-colors gap-4"
                     >
                       <div className="text-left space-y-1">
-                        <h4 className="text-sm font-black text-slate-800">{ts.taskTitle}</h4>
-                        <p className="text-xs text-slate-400 font-bold">Grado: {ts.className}</p>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold">
-                          {ts.pendingCount} entregas pendientes
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-black text-slate-800">{ts.missionTitle || ts.taskTitle || 'Misión Escolar'}</h4>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold">
+                            +{ts.points || 300} pts
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 font-medium">Estudiante: <span className="font-bold">{ts.studentName || 'Alumno'}</span> ({ts.classroomId || ts.className || '10-02'})</p>
+                        <p className="text-xs text-slate-500 italic bg-white p-2 rounded-lg border border-slate-100 mt-1">"{ts.content || 'Evidencia cargada'}"</p>
+                        <p className="text-[10px] text-slate-400 font-semibold">{ts.submittedAt || ts.date || 'Hace un momento'}</p>
                       </div>
                       
                       <button
-                        onClick={() => handleVerifySubmission(ts.id, ts.className, ts.taskTitle)}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md"
+                        onClick={() => handleVerifySubmission(ts.id, ts.classroomId || ts.className || '10-02', ts.points || 300)}
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shrink-0 flex items-center justify-center gap-1.5"
                       >
-                        Validar Entregas
+                        <CheckCircle2 className="w-4 h-4" />
+                        Validar y Sumar Puntos
                       </button>
                     </div>
                   ))}
@@ -589,19 +744,19 @@ export const DocenteDashboard: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                {['10-01', '11-02', '10-02 (Los Invencibles)', '09-01'].map((classroom, index) => (
+                {sortedClassrooms.map((item, index) => (
                   <div
-                    key={index}
+                    key={item.id}
                     className="flex justify-between items-center p-3.5 bg-[#F8FAFC] border border-slate-100 rounded-xl"
                   >
                     <div className="flex items-center gap-3">
                       <span className="w-6 h-6 rounded-full bg-slate-200 text-xs font-bold flex items-center justify-center">
                         #{index + 1}
                       </span>
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-800">Grado {classroom}</h4>
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-800">Grado {item.name || item.id}</h4>
                     </div>
                     <span className="text-xs sm:text-sm font-black text-slate-800">
-                      {10000 - index * 1000} pts
+                      {(rankingFilter === 'season' ? item.points : item.points + 10000).toLocaleString('es-CO')} pts
                     </span>
                   </div>
                 ))}
