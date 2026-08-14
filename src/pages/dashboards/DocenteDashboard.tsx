@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import logoColegio from "../../assets/cologo.png";
+import logoImpulsa from "../../assets/logo-impulsa.png";
 import { useNavigate } from '@tanstack/react-router';
 import {
   Home,
@@ -22,37 +23,27 @@ import {
   Sparkles,
   LogOut,
   PlusCircle,
-  CheckSquare
+  CheckSquare,
+  Users,
+  Eye,
+  AlertCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { StudentsTab } from '../../components/tabs/StudentsTab';
+import { mockStudents } from '../../data/directorMockData';
 
 // ==========================================
 // CUSTOM VECTOR ARTWORK / SVGS (PREMIUM BRANDING)
 // ==========================================
 
 const ImpulsaLogo: React.FC = () => (
-  <div className="flex items-center gap-3">
-    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e2e6e] border border-blue-400/30 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M19 5c0 0-4.5.5-8 4-2.8 2.8-3.5 6.5-3.5 6.5s-2-1-4 1c-2 2-1.5 6-1.5 6s4 .5 6-1.5c2-2 1-4 1-4s3.7-.7 6.5-3.5c3.5-3.5 4-8 4-8z"
-          fill="url(#rocketGoldGrad)"
-        />
-        <path
-          d="M4 20c.5-1.5 2-2.5 2.5-3m-4.5.5l1.5-1.5"
-          stroke="#F59E0B"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <defs>
-          <linearGradient id="rocketGoldGrad" x1="4" y1="5" x2="19" y2="20" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#FDE047" />
-            <stop offset="0.5" stopColor="#F59E0B" />
-            <stop offset="1" stopColor="#D97706" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
+  <div className="flex items-center gap-2.5">
+    <img
+      src={logoImpulsa}
+      alt="Logo IMPULSA"
+      className="w-10 h-10 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(59,130,246,0.4)]"
+    />
     <span className="text-xl font-black tracking-widest text-[#FFD700] select-none font-sans drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
       IMPULSA
     </span>
@@ -143,27 +134,59 @@ export const DocenteDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   // State Management
-  const [activeTab, setActiveTab] = useState<'inicio' | 'crear' | 'validar' | 'ranking' | 'historial'>('inicio');
+  const [activeTab, setActiveTab] = useState<'inicio' | 'crear' | 'validar' | 'alumnos' | 'ranking' | 'sugerencias' | 'historial'>('inicio');
   const [taskSubmissions, setTaskSubmissions] = useState<TaskSubmission[]>(INITIAL_TASK_SUBMISSIONS);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [bannerIndex, setBannerIndex] = useState<number>(0);
   const [rankingFilter, setRankingFilter] = useState<'season' | 'league'>('season');
+  const [previewImageModal, setPreviewImageModal] = useState<{ imageUrl: string; submission: any } | null>(null);
+
+  const [corrections, setCorrections] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('mission_corrections');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const pendingCorrections = useMemo(() => {
+    return corrections.filter((c) => (c.status || '').toUpperCase() === 'PENDING');
+  }, [corrections]);
 
   // Form State
   const [taskTitle, setTaskTitle] = useState<string>('');
   const [taskDesc, setTaskDesc] = useState<string>('');
   const [taskClass, setTaskClass] = useState<string>('10-02');
   const [taskPoints, setTaskPoints] = useState<string>('300');
+  const [isMandatory, setIsMandatory] = useState<boolean>(false);
 
   const [classrooms, setClassrooms] = useState<any[]>(() => {
     const stored = localStorage.getItem('school_classrooms');
     return stored ? JSON.parse(stored) : [
-      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Carlos Mendoza', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
-      { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
-      { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
-      { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
+      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Yaritza Tirado', puntosTemporada: 4200, puntosLiga: 12700, points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
+      { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', puntosTemporada: 3100, puntosLiga: 9210, points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
+      { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', puntosTemporada: 2500, puntosLiga: 7850, points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
+      { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', puntosTemporada: 3800, puntosLiga: 8980, points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
     ];
   });
+
+  const loadCorrections = () => {
+    try {
+      const stored = localStorage.getItem('mission_corrections');
+      if (stored) setCorrections(JSON.parse(stored));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleResolveCorrection = (id: string) => {
+    const updated = corrections.map((c) => (c.id === id ? { ...c, status: 'RESOLVED' } : c));
+    setCorrections(updated);
+    localStorage.setItem('mission_corrections', JSON.stringify(updated));
+    window.dispatchEvent(new Event('global_system_updated'));
+    toast.success('Sugerencia marcada como resuelta');
+  };
 
   useEffect(() => {
     const loadSharedClassrooms = () => {
@@ -177,24 +200,65 @@ export const DocenteDashboard: React.FC = () => {
       }
     };
     loadSharedClassrooms();
-    window.addEventListener('storage', loadSharedClassrooms);
-    window.addEventListener('director_data_updated', loadSharedClassrooms);
-    window.addEventListener('global_system_updated', loadSharedClassrooms);
+    loadCorrections();
+    
+    const handleGlobalUpdates = () => {
+      loadSharedClassrooms();
+      loadCorrections();
+    };
+
+    window.addEventListener('storage', handleGlobalUpdates);
+    window.addEventListener('global_system_updated', handleGlobalUpdates);
+    window.addEventListener('director_data_updated', handleGlobalUpdates);
+    window.addEventListener('season_updated', handleGlobalUpdates);
+    window.addEventListener('mission_correction_submitted', handleGlobalUpdates);
+
     return () => {
-      window.removeEventListener('storage', loadSharedClassrooms);
-      window.removeEventListener('director_data_updated', loadSharedClassrooms);
-      window.removeEventListener('global_system_updated', loadSharedClassrooms);
+      window.removeEventListener('storage', handleGlobalUpdates);
+      window.removeEventListener('global_system_updated', handleGlobalUpdates);
+      window.removeEventListener('director_data_updated', handleGlobalUpdates);
+      window.removeEventListener('season_updated', handleGlobalUpdates);
+      window.removeEventListener('mission_correction_submitted', handleGlobalUpdates);
     };
   }, []);
 
-  const sortedClassrooms = React.useMemo(() => {
-    return [...classrooms].sort((a, b) => b.points - a.points);
+  const seasonLeaderboard = useMemo(() => {
+    return [...classrooms]
+      .sort((a: any, b: any) => (b.puntosTemporada ?? (b.points || 0)) - (a.puntosTemporada ?? (a.points || 0)))
+      .map((item: any, idx: number) => ({
+        id: item.id || item.name,
+        name: item.name || item.id,
+        points: item.puntosTemporada ?? (item.points || 0),
+        isMe: item.id === '10-02',
+        rank: idx + 1,
+      }));
   }, [classrooms]);
 
-  const bannerSlides = [
+  const leagueLeaderboard = useMemo(() => {
+    return [...classrooms]
+      .sort((a: any, b: any) => (b.puntosLiga ?? (b.points || 0)) - (a.puntosLiga ?? (a.points || 0)))
+      .map((item: any, idx: number) => ({
+        id: item.id || item.name,
+        name: item.name || item.id,
+        points: item.puntosLiga ?? (item.points || 0),
+        isMe: item.id === '10-02',
+        rank: idx + 1,
+      }));
+  }, [classrooms]);
+
+  const displayedLeaderboard = useMemo(() => {
+    return rankingFilter === 'season' ? seasonLeaderboard : leagueLeaderboard;
+  }, [rankingFilter, seasonLeaderboard, leagueLeaderboard]);
+
+  const leaderClassroom = useMemo(() => {
+    const top = seasonLeaderboard[0];
+    return top ? top.name : '10-01 Líderes';
+  }, [seasonLeaderboard]);
+
+  const bannerSlides = useMemo(() => [
     {
       tag: '🎓 GESTIÓN ACADÉMICA',
-      title: '¡Lanzamiento de misiones escolares!',
+      title: `¡El salón ${leaderClassroom} va liderando la temporada actual!`,
       text: 'Diseña nuevos retos curriculares para impulsar el aprendizaje de tus salones.',
       buttonText: 'Crear nueva misión >',
     },
@@ -204,7 +268,7 @@ export const DocenteDashboard: React.FC = () => {
       text: 'Consulta los informes cargados por los alumnos y otorga puntos de liga.',
       buttonText: 'Validar evidencias >',
     },
-  ];
+  ], [leaderClassroom]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -309,6 +373,7 @@ export const DocenteDashboard: React.FC = () => {
       status: 'ACTIVE',
       category: 'Académica' as const,
       badge: 'Desafío Docente',
+      isMandatory: isMandatory,
     };
 
     try {
@@ -332,10 +397,11 @@ export const DocenteDashboard: React.FC = () => {
     window.dispatchEvent(new Event('global_system_updated'));
 
     toast.success('Nueva misión publicada', {
-      description: `Misión "${taskTitle}" asignada al grupo ${taskClass} por +${taskPoints} pts.`,
+      description: `Misión "${taskTitle}" asignada al grupo ${taskClass} por +${taskPoints} pts${isMandatory ? ' (Obligatoria)' : ''}.`,
     });
     setTaskTitle('');
     setTaskDesc('');
+    setIsMandatory(false);
   };
 
   const handleVerifySubmission = (submissionId: string, classroomId: string = '10-02', points: number = 300) => {
@@ -346,6 +412,8 @@ export const DocenteDashboard: React.FC = () => {
       const target = currentSubmissions.find((s: any) => s.id === submissionId);
       const pointsToAdd = target?.points ? Number(target.points) : points;
       const targetClassroom = target?.classroomId || classroomId;
+      const targetMissionId = target?.missionId;
+      const targetMissionTitle = target?.missionTitle || target?.taskTitle;
 
       const updatedSubmissions = currentSubmissions.map((sub: any) => 
         sub.id === submissionId ? { ...sub, status: 'APPROVED' } : sub
@@ -356,14 +424,36 @@ export const DocenteDashboard: React.FC = () => {
       localStorage.setItem('director_evidences', JSON.stringify(updatedSubmissions));
       localStorage.setItem('director_submissions', JSON.stringify(updatedSubmissions));
 
+      // Update mission status in 'school_missions' and 'director_missions'
+      const storedMissionsRaw = localStorage.getItem('school_missions') || localStorage.getItem('director_missions');
+      if (storedMissionsRaw) {
+        try {
+          const missionsList = JSON.parse(storedMissionsRaw);
+          const updatedMissions = missionsList.map((m: any) => {
+            if (m.id === targetMissionId || m.title === targetMissionTitle) {
+              return { ...m, status: 'COMPLETED' };
+            }
+            return m;
+          });
+          localStorage.setItem('school_missions', JSON.stringify(updatedMissions));
+          localStorage.setItem('director_missions', JSON.stringify(updatedMissions));
+        } catch (e) {
+          console.error('Error updating mission status:', e);
+        }
+      }
+
       // Update classroom points in 'school_classrooms'
       const storedClassrooms = localStorage.getItem('school_classrooms');
       let classroomsList = storedClassrooms ? JSON.parse(storedClassrooms) : classrooms;
       const updatedClassrooms = classroomsList.map((c: any) => {
         if (c.id === targetClassroom || c.id === '10-02') {
+          const currentTemp = c.puntosTemporada ?? (c.points || 0);
+          const currentLiga = c.puntosLiga ?? (c.points || 0);
           return {
             ...c,
-            points: (c.points || 0) + pointsToAdd,
+            puntosTemporada: currentTemp + pointsToAdd,
+            puntosLiga: currentLiga + pointsToAdd,
+            points: currentLiga + pointsToAdd,
             approvedMissions: (c.approvedMissions || 0) + 1
           };
         }
@@ -374,12 +464,41 @@ export const DocenteDashboard: React.FC = () => {
 
       window.dispatchEvent(new Event('director_data_updated'));
       window.dispatchEvent(new Event('global_system_updated'));
+      window.dispatchEvent(new Event('student_evidence_submitted'));
+      window.dispatchEvent(new Event('mission_created'));
 
       toast.success('Evidencia validada', {
-        description: `Se han sumado +${pointsToAdd} pts al salón ${targetClassroom}.`,
+        description: `Se han sumado +${pointsToAdd} pts al salón ${targetClassroom} y finalizado la misión.`,
       });
     } catch (e) {
       console.error('Error al validar evidencia', e);
+    }
+  };
+
+  const handleRejectSubmission = (submissionId: string) => {
+    try {
+      const stored = localStorage.getItem('school_submissions') || localStorage.getItem('director_evidences');
+      let currentSubmissions = stored ? JSON.parse(stored) : submissions;
+
+      const updatedSubmissions = currentSubmissions.map((sub: any) => 
+        sub.id === submissionId ? { ...sub, status: 'REJECTED' } : sub
+      );
+
+      setSubmissions(updatedSubmissions);
+      localStorage.setItem('school_submissions', JSON.stringify(updatedSubmissions));
+      localStorage.setItem('director_evidences', JSON.stringify(updatedSubmissions));
+      localStorage.setItem('director_submissions', JSON.stringify(updatedSubmissions));
+
+      window.dispatchEvent(new Event('director_data_updated'));
+      window.dispatchEvent(new Event('global_system_updated'));
+      window.dispatchEvent(new Event('student_evidence_submitted'));
+      window.dispatchEvent(new Event('mission_created'));
+
+      toast.error('Evidencia rechazada', {
+        description: 'Se notificó al estudiante para reintentar la entrega.',
+      });
+    } catch (e) {
+      console.error('Error al rechazar evidencia', e);
     }
   };
 
@@ -387,7 +506,9 @@ export const DocenteDashboard: React.FC = () => {
     { id: 'inicio', label: 'Inicio', icon: Home },
     { id: 'crear', label: 'Crear Misión', icon: PlusCircle },
     { id: 'validar', label: 'Validar Entregas', icon: CheckSquare },
+    { id: 'alumnos', label: 'Estudiantes del Salón', icon: Users },
     { id: 'ranking', label: 'Tablas de Liga', icon: Trophy },
+    { id: 'sugerencias', label: 'Sugerencias Misiones', icon: AlertCircle },
     { id: 'historial', label: 'Historial Docente', icon: History },
   ] as const;
 
@@ -396,10 +517,7 @@ export const DocenteDashboard: React.FC = () => {
       
       {/* 1. SIDEBAR */}
       <aside
-        className={`w-64 bg-[#0A0F24] text-white flex flex-col justify-between shrink-0 transition-transform duration-300 z-40
-          fixed md:sticky top-0 h-screen
-          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        `}
+        className={`w-64 bg-[#0A0F24] text-white flex flex-col justify-between shrink-0 transition-transform duration-300 z-40 fixed md:sticky top-0 h-screen max-h-screen min-h-screen overflow-y-auto ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
         <div className="p-6 border-b border-blue-900/30 flex items-center justify-between">
           <ImpulsaLogo />
@@ -419,7 +537,7 @@ export const DocenteDashboard: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => {
-                  setActiveTab(item.id);
+                  setActiveTab(item.id as any);
                   setMobileMenuOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200
@@ -434,6 +552,11 @@ export const DocenteDashboard: React.FC = () => {
                 {item.id === 'validar' && pendingSubmissions.length > 0 && (
                   <span className="ml-auto bg-[#EF4444] text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full">
                     {pendingSubmissions.length}
+                  </span>
+                )}
+                {item.id === 'sugerencias' && pendingCorrections.length > 0 && (
+                  <span className="ml-auto bg-amber-500 text-slate-950 font-black text-[10px] px-1.5 py-0.5 rounded-full">
+                    {pendingCorrections.length}
                   </span>
                 )}
               </button>
@@ -654,6 +777,25 @@ export const DocenteDashboard: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Mandatory Mission Toggle Switch */}
+                <div className="flex items-start justify-between gap-3 p-3.5 rounded-xl bg-[#F8FAFC] border border-slate-200">
+                  <div className="space-y-0.5 text-left">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 cursor-pointer">
+                      <ShieldAlert className="w-4 h-4 text-rose-500" />
+                      Misión Obligatoria (Mandatory Mission)
+                    </label>
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                      Las misiones obligatorias no se pueden rechazar ni ignorar por los estudiantes.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isMandatory}
+                    onChange={(e) => setIsMandatory(e.target.checked)}
+                    className="w-5 h-5 accent-indigo-600 rounded cursor-pointer shrink-0 mt-0.5"
+                  />
+                </div>
+
                 <button
                   type="submit"
                   className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-[0.98]"
@@ -683,84 +825,238 @@ export const DocenteDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3.5">
-                  {pendingSubmissions.map((ts: any) => (
-                    <div
-                      key={ts.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#F8FAFC] border border-slate-100 rounded-2xl hover:border-slate-200 transition-colors gap-4"
-                    >
-                      <div className="text-left space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-black text-slate-800">{ts.missionTitle || ts.taskTitle || 'Misión Escolar'}</h4>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold">
-                            +{ts.points || 300} pts
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 font-medium">Estudiante: <span className="font-bold">{ts.studentName || 'Alumno'}</span> ({ts.classroomId || ts.className || '10-02'})</p>
-                        <p className="text-xs text-slate-500 italic bg-white p-2 rounded-lg border border-slate-100 mt-1">"{ts.content || 'Evidencia cargada'}"</p>
-                        <p className="text-[10px] text-slate-400 font-semibold">{ts.submittedAt || ts.date || 'Hace un momento'}</p>
-                      </div>
-                      
-                      <button
-                        onClick={() => handleVerifySubmission(ts.id, ts.classroomId || ts.className || '10-02', ts.points || 300)}
-                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shrink-0 flex items-center justify-center gap-1.5"
+                  {pendingSubmissions.map((ts: any) => {
+                    const imageUrl = ts.imageUrl || (ts.content?.startsWith?.('data:image') ? ts.content : undefined);
+
+                    return (
+                      <div
+                        key={ts.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#F8FAFC] border border-slate-100 rounded-2xl hover:border-slate-200 transition-colors gap-4"
                       >
-                        <CheckCircle2 className="w-4 h-4" />
-                        Validar y Sumar Puntos
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-start gap-3 text-left">
+                          {imageUrl && (
+                            <div
+                              onClick={() => setPreviewImageModal({ imageUrl, submission: ts })}
+                              className="relative group shrink-0 cursor-pointer overflow-hidden rounded-xl border border-slate-200 shadow-sm"
+                              title="Ver foto a pantalla completa"
+                            >
+                              <img
+                                src={imageUrl}
+                                alt="Foto evidencia"
+                                className="w-16 h-16 object-cover group-hover:scale-105 transition-transform duration-200"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <Eye className="w-5 h-5 text-white drop-shadow-md" />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-black text-slate-800">{ts.missionTitle || ts.taskTitle || 'Misión Escolar'}</h4>
+                              {ts.category && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
+                                  {ts.category}
+                                </span>
+                              )}
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold">
+                                +{ts.points || 300} pts
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 font-medium">Estudiante: <span className="font-bold">{ts.studentName || 'Alumno'}</span> ({ts.classroomId || ts.className || '10-02'})</p>
+                            {ts.content && !ts.content.startsWith('data:image') && (
+                              <p className="text-xs text-slate-500 italic bg-white p-2 rounded-lg border border-slate-100 mt-1">"{ts.content}"</p>
+                            )}
+                            <p className="text-[10px] text-slate-400 font-semibold">{ts.submittedAt || ts.date || 'Hace un momento'}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 shrink-0">
+                          {imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewImageModal({ imageUrl, submission: ts })}
+                              className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                            >
+                              <Eye className="w-4 h-4" />
+                              Ver Foto
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleRejectSubmission(ts.id)}
+                            className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-xl transition-all"
+                          >
+                            Rechazar
+                          </button>
+                          <button
+                            onClick={() => handleVerifySubmission(ts.id, ts.classroomId || ts.className || '10-02', ts.points || 300)}
+                            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Validar y Sumar Puntos
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>
           )}
 
+          {/* TAB 4: ALUMNOS / ESTUDIANTES */}
+          {activeTab === 'alumnos' && (
+            <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-left">
+              <div className="border-b border-slate-100 pb-4">
+                <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <Users className="w-6 h-6 text-indigo-600" />
+                  Gestión de Alumnos y Reconocimientos (10-02)
+                </h3>
+                <p className="text-xs text-slate-400 font-semibold font-sans">
+                  Monitorea el avance individual y otorga la mención de "Estudiante Destacado" en tiempo real
+                </p>
+              </div>
+
+              <StudentsTab students={mockStudents as any} classroomId="10-02" />
+            </section>
+          )}
+
           {/* TAB 4: LIGAS */}
           {activeTab === 'ranking' && (
-            <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+            <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-left">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
                 <div className="text-left">
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Tabla General Escolar</h3>
-                  <p className="text-xs text-slate-400 font-semibold">Consola Académica de Liga</p>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <Trophy className="w-6 h-6 text-yellow-500" />
+                    Tabla General Escolar
+                  </h3>
+                  <p className="text-xs text-slate-400 font-semibold font-sans">Consola Académica de Liga en Tiempo Real</p>
                 </div>
                 
                 <div className="flex bg-[#F1F5F9] p-1 rounded-xl">
                   <button
                     onClick={() => setRankingFilter('season')}
                     className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all ${
-                      rankingFilter === 'season' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'
+                      rankingFilter === 'season' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Temporada
+                    Tabla de Temporada
                   </button>
                   <button
                     onClick={() => setRankingFilter('league')}
                     className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all ${
-                      rankingFilter === 'league' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'
+                      rankingFilter === 'league' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Liga General
+                    Tabla Oficial de la Liga
                   </button>
                 </div>
               </div>
 
               <div className="space-y-3">
-                {sortedClassrooms.map((item, index) => (
+                {displayedLeaderboard.map((item: any) => (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center p-3.5 bg-[#F8FAFC] border border-slate-100 rounded-xl"
+                    className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                      item.isMe 
+                        ? 'bg-[#E8F0FE] border-blue-400 shadow-sm' 
+                        : 'bg-[#F8FAFC] border-slate-100 hover:border-slate-200'
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-slate-200 text-xs font-bold flex items-center justify-center">
-                        #{index + 1}
+                    <div className="flex items-center gap-3 text-left">
+                      <span className={`w-8 h-8 rounded-full text-xs font-black flex items-center justify-center ${
+                        item.rank === 1 ? 'bg-amber-400 text-amber-950 shadow-sm' :
+                        item.rank === 2 ? 'bg-slate-300 text-slate-800' :
+                        item.rank === 3 ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        #{item.rank}
                       </span>
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-800">Grado {item.name || item.id}</h4>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">
+                          Grado {item.name} {item.isMe && '(Mi Salón)'}
+                        </h4>
+                        {item.isMe && (
+                          <span className="text-[10px] text-blue-600 font-extrabold">Actualizado en vivo</span>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs sm:text-sm font-black text-slate-800">
-                      {(rankingFilter === 'season' ? item.points : item.points + 10000).toLocaleString('es-CO')} pts
+                    <span className="text-sm font-black text-slate-800">
+                      {item.points.toLocaleString('es-CO')} pts
                     </span>
                   </div>
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* TAB: SUGERENCIAS / REPORTES */}
+          {activeTab === 'sugerencias' && (
+            <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-left">
+              <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <AlertCircle className="w-6 h-6 text-amber-500" />
+                    Sugerencias y Reportes de Misiones
+                  </h3>
+                  <p className="text-xs text-slate-400 font-semibold">
+                    Feedback de estudiantes sobre guías, enlaces o inconsistencias en las misiones
+                  </p>
+                </div>
+                <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">
+                  {pendingCorrections.length} pendientes
+                </span>
+              </div>
+
+              {corrections.length === 0 ? (
+                <div className="text-center py-10 space-y-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-800">¡Sin sugerencias pendientes!</h4>
+                  <p className="text-xs text-slate-400 font-semibold">No se han registrado observaciones de misiones por parte de alumnos.</p>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {corrections.map((corr: any) => {
+                    const isPending = (corr.status || '').toUpperCase() === 'PENDING';
+
+                    return (
+                      <div
+                        key={corr.id}
+                        className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                          isPending ? 'bg-amber-50/50 border-amber-200' : 'bg-slate-50 border-slate-200 opacity-75'
+                        }`}
+                      >
+                        <div className="space-y-1 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                              isPending ? 'bg-amber-500 text-slate-950' : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {isPending ? 'Pendiente' : 'Atendida / Resuelta'}
+                            </span>
+                            <h4 className="text-sm font-black text-slate-800">{corr.missionTitle}</h4>
+                          </div>
+                          <p className="text-xs text-slate-600 font-medium">
+                            Estudiante: <strong className="text-slate-800">{corr.studentName}</strong> (Salón {corr.classroomId})
+                          </p>
+                          <p className="text-xs text-slate-700 bg-white p-2.5 rounded-xl border border-slate-200/80 font-medium italic">
+                            "{corr.feedback}"
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-semibold">{corr.createdAt}</p>
+                        </div>
+
+                        {isPending && (
+                          <button
+                            onClick={() => handleResolveCorrection(corr.id)}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shrink-0 flex items-center justify-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Marcar como Resuelta
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
 
@@ -794,6 +1090,68 @@ export const DocenteDashboard: React.FC = () => {
         </footer>
       </div>
 
+      {/* Lightbox Modal para vista previa de imagen en pantalla completa */}
+      {previewImageModal && (
+        <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  Evidencia Fotográfica
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1 leading-snug">
+                  {previewImageModal.submission.missionTitle || previewImageModal.submission.taskTitle || 'Misión Escolar'}
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold">
+                  Estudiante: <strong className="text-slate-800">{previewImageModal.submission.studentName || 'Alumno'}</strong> · Salón {previewImageModal.submission.classroomId || '10-02'} · Recompensa: <strong className="text-indigo-600">+{previewImageModal.submission.points || 300} pts</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setPreviewImageModal(null)}
+                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
+                aria-label="Cerrar vista previa"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 max-h-[60vh] flex items-center justify-center">
+              <img
+                src={previewImageModal.imageUrl}
+                alt="Evidencia fotográfica a pantalla completa"
+                className="w-full h-auto max-h-[60vh] object-contain"
+              />
+            </div>
+
+            {previewImageModal.submission.content && !previewImageModal.submission.content.startsWith('data:image') && (
+              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium">
+                "{previewImageModal.submission.content}"
+              </p>
+            )}
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setPreviewImageModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleVerifySubmission(previewImageModal.submission.id, previewImageModal.submission.classroomId || '10-02', previewImageModal.submission.points || 300);
+                  setPreviewImageModal(null);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Validar y Sumar Puntos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import logoColegio from "../../assets/cologo.png";
+import logoImpulsa from "../../assets/logo-impulsa.png";
 import {
   Home,
   Trophy,
@@ -25,38 +26,26 @@ import {
   LogOut,
   ThumbsUp,
   Flame as FlameIcon,
-  MessageSquare
+  MessageSquare,
+  AlertCircle,
+  Send,
+  ShieldAlert,
+  Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { FeaturedStudent } from '../../types/director';
 
 // ==========================================
 // CUSTOM VECTOR ARTWORK / SVGS (PREMIUM BRANDING)
 // ==========================================
 
 const ImpulsaLogo: React.FC = () => (
-  <div className="flex items-center gap-3">
-    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e2e6e] border border-blue-400/30 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* Golden Rocket pointing up-right */}
-        <path
-          d="M19 5c0 0-4.5.5-8 4-2.8 2.8-3.5 6.5-3.5 6.5s-2-1-4 1c-2 2-1.5 6-1.5 6s4 .5 6-1.5c2-2 1-4 1-4s3.7-.7 6.5-3.5c3.5-3.5 4-8 4-8z"
-          fill="url(#rocketGoldGrad)"
-        />
-        <path
-          d="M4 20c.5-1.5 2-2.5 2.5-3m-4.5.5l1.5-1.5"
-          stroke="#F59E0B"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <defs>
-          <linearGradient id="rocketGoldGrad" x1="4" y1="5" x2="19" y2="20" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#FDE047" />
-            <stop offset="0.5" stopColor="#F59E0B" />
-            <stop offset="1" stopColor="#D97706" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
+  <div className="flex items-center gap-2.5">
+    <img
+      src={logoImpulsa}
+      alt="Logo IMPULSA"
+      className="w-10 h-10 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(59,130,246,0.4)]"
+    />
     <span className="text-xl font-black tracking-widest text-[#FFD700] select-none font-sans drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
       IMPULSA
     </span>
@@ -292,11 +281,13 @@ const LEADERBOARD_LEAGUE = [
 interface MissionItem {
   id: string;
   title: string;
-  category: 'Ambiental' | 'Académica' | 'Cultural' | 'Convivencia';
+  category: string;
   points: number;
   timeRemaining: string;
-  status: 'active' | 'in_review' | 'completed';
+  status: 'active' | 'in_review' | 'completed' | string;
   badge: string;
+  isMandatory?: boolean;
+  isRejected?: boolean;
 }
 
 const INITIAL_MISSIONS: MissionItem[] = [
@@ -357,8 +348,9 @@ const loadStudentMissions = (): MissionItem[] => {
             category: m.category || 'Ambiental',
             points: Number(m.points) || 100,
             timeRemaining: m.dueDate ? `Límite: ${m.dueDate}` : (m.timeRemaining || 'Activa'),
-            status: (m.status === 'ACTIVE' || m.status === 'active') ? 'active' as const : (m.status === 'completed' ? 'completed' as const : 'active' as const),
+            status: (m.status === 'COMPLETED' || m.status === 'completed') ? 'completed' as const : 'active' as const,
             badge: m.badge || 'Desafío',
+            isMandatory: !!m.isMandatory,
           }));
         }
       } catch (e) {
@@ -376,15 +368,15 @@ const loadStudentMissions = (): MissionItem[] => {
       try {
         const evidences = JSON.parse(storedEvidencesRaw);
         baseMissions = baseMissions.map((mission: MissionItem) => {
-          const ev = evidences.find((e: any) => e.missionId === mission.id);
+          const ev = evidences.find((e: any) => e.missionId === mission.id || e.missionTitle === mission.title);
           if (!ev) return mission;
           const statusUpper = (ev.status || '').toUpperCase();
           if (statusUpper === 'APPROVED') {
-            return { ...mission, status: 'completed' as const };
+            return { ...mission, status: 'completed' as const, isRejected: false };
           } else if (statusUpper === 'PENDING') {
-            return { ...mission, status: 'in_review' as const };
+            return { ...mission, status: 'in_review' as const, isRejected: false };
           } else if (statusUpper === 'REJECTED') {
-            return { ...mission, status: 'active' as const };
+            return { ...mission, status: 'active' as const, isRejected: true };
           }
           return mission;
         });
@@ -415,6 +407,13 @@ export const EstudianteDashboard: React.FC = () => {
   const [selectedMission, setSelectedMission] = useState<MissionItem | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [evidenceText, setEvidenceText] = useState<string>('');
+  const [evidenceCategory, setEvidenceCategory] = useState<string>('Académica');
+  const [evidenceImage, setEvidenceImage] = useState<string | null>(null);
+
+  // Correction Suggestion Modal State
+  const [correctionModalOpen, setCorrectionModalOpen] = useState<boolean>(false);
+  const [selectedCorrectionMission, setSelectedCorrectionMission] = useState<MissionItem | null>(null);
+  const [correctionFeedback, setCorrectionFeedback] = useState<string>('');
 
   // Persistir cambios en missionsList en localStorage
   useEffect(() => {
@@ -428,7 +427,7 @@ export const EstudianteDashboard: React.FC = () => {
   const [classrooms, setClassrooms] = useState<any[]>(() => {
     const stored = localStorage.getItem('school_classrooms');
     return stored ? JSON.parse(stored) : [
-      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Carlos Mendoza', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
+      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Yaritza Tirado', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
       { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
       { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
       { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
@@ -436,8 +435,13 @@ export const EstudianteDashboard: React.FC = () => {
   });
 
   const sortedClassrooms = useMemo(() => {
-    return [...classrooms].sort((a: any, b: any) => b.points - a.points);
-  }, [classrooms]);
+    return [...classrooms].sort((a: any, b: any) => {
+      if (rankingFilter === 'season') {
+        return (b.puntosTemporada ?? (b.points || 0)) - (a.puntosTemporada ?? (a.points || 0));
+      }
+      return (b.puntosLiga ?? (b.points || 0)) - (a.puntosLiga ?? (a.points || 0));
+    });
+  }, [classrooms, rankingFilter]);
 
   const myClassroom = useMemo(() => {
     return classrooms.find((c: any) => c.id === '10-02') || {
@@ -457,25 +461,85 @@ export const EstudianteDashboard: React.FC = () => {
     return idx >= 0 ? idx + 1 : 1;
   }, [sortedClassrooms]);
 
-  useEffect(() => {
-    const loadSharedClassrooms = () => {
-      const stored = localStorage.getItem('school_classrooms');
+  const leaderClassroom = useMemo(() => {
+    return sortedClassrooms[0] || { name: '10-01 Líderes', points: 9210 };
+  }, [sortedClassrooms]);
+
+  const dynamicBannerSlides = useMemo(() => [
+    {
+      tag: '⭐ LÍDER DE TEMPORADA',
+      title: `¡El salón ${leaderClassroom.name || leaderClassroom.id} va liderando la temporada con ${(leaderClassroom.puntosTemporada ?? leaderClassroom.points ?? 0).toLocaleString('es-CO')} pts!`,
+      text: `Tu salón (10-02) está en la posición #${myClassroomRank}. ¡Sigan subiendo evidencias para alcanzar el liderazgo!`,
+      buttonText: 'Ver ranking >',
+    },
+    {
+      tag: '⚡ RETO RELÁMPAGO',
+      title: '¡Misión "Aula Limpia" sorpresa activa hoy!',
+      text: 'Sube las fotos de tu salón ordenado y gana +450 pts directos.',
+      buttonText: 'Subir evidencia >',
+    },
+    {
+      tag: '🏆 HITO HISTÓRICO',
+      title: '¡Proyecto X otorga 5.000 Puntos de Liga al ganador!',
+      text: 'Prepara tu propuesta de impacto escolar y postúlala ya.',
+      buttonText: 'Postular ahora >',
+    },
+    {
+      tag: '📢 AVISO DE TEMPORADA',
+      title: 'Quedan 18 días para el cierre de la Temporada 3',
+      text: 'Asegura tu posición en la liga. ¡No dejes misiones pendientes!',
+      buttonText: 'Ver misiones >',
+    },
+  ], [leaderClassroom, myClassroomRank]);
+
+  // Estado de Estudiante Destacado
+  const [featuredStudent, setFeaturedStudent] = useState<FeaturedStudent | null>(() => {
+    try {
+      const stored = localStorage.getItem('school_featured_students');
       if (stored) {
-        try {
-          setClassrooms(JSON.parse(stored));
-        } catch (e) {
-          console.error(e);
+        const parsed = JSON.parse(stored);
+        const list: FeaturedStudent[] = Array.isArray(parsed) ? parsed : [parsed];
+        return list.find((item) => item.classroomId === '10-02') || list[0] || null;
+      }
+    } catch (e) {
+      console.error('Error al leer school_featured_students:', e);
+    }
+    return {
+      classroomId: '10-02',
+      studentId: 'std-2',
+      studentName: 'Valeria Gómez',
+      reason: 'Excelente desempeño ambiental, puntualidad en entregas y gran liderazgo en equipo.',
+      updatedAt: 'Hace 2 horas',
+    };
+  });
+
+  useEffect(() => {
+    const loadFeaturedStudent = () => {
+      try {
+        const stored = localStorage.getItem('school_featured_students');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const list: FeaturedStudent[] = Array.isArray(parsed) ? parsed : [parsed];
+          const found = list.find((item) => item.classroomId === '10-02') || list[0] || null;
+          setFeaturedStudent(found);
+        } else {
+          setFeaturedStudent(null);
         }
+      } catch (e) {
+        console.error('Error cargando estudiante destacado:', e);
       }
     };
-    loadSharedClassrooms();
-    window.addEventListener('storage', loadSharedClassrooms);
-    window.addEventListener('director_data_updated', loadSharedClassrooms);
-    window.addEventListener('global_system_updated', loadSharedClassrooms);
+
+    loadFeaturedStudent();
+
+    window.addEventListener('storage', loadFeaturedStudent);
+    window.addEventListener('featured_student_updated', loadFeaturedStudent);
+    window.addEventListener('global_system_updated', loadFeaturedStudent);
+
     return () => {
-      window.removeEventListener('storage', loadSharedClassrooms);
-      window.removeEventListener('director_data_updated', loadSharedClassrooms);
-      window.removeEventListener('global_system_updated', loadSharedClassrooms);
+      window.removeEventListener('storage', loadFeaturedStudent);
+      window.removeEventListener('featured_student_updated', loadFeaturedStudent);
+      window.removeEventListener('global_system_updated', loadFeaturedStudent);
     };
   }, []);
 
@@ -503,10 +567,10 @@ export const EstudianteDashboard: React.FC = () => {
   // Auto-play banner slides every 6 seconds
   useEffect(() => {
     const timer = setInterval(() => {
-      setBannerIndex((prev) => (prev + 1) % BANNER_SLIDES.length);
+      setBannerIndex((prev) => (prev + 1) % dynamicBannerSlides.length);
     }, 6000);
     return () => clearInterval(timer);
-  }, []);
+  }, [dynamicBannerSlides.length]);
 
   const handleLogout = () => {
     localStorage.removeItem('userRole');
@@ -534,7 +598,26 @@ export const EstudianteDashboard: React.FC = () => {
 
   const handleOpenEvidenceModal = (mission: MissionItem) => {
     setSelectedMission(mission);
+    setEvidenceCategory(mission.category || 'Académica');
+    setEvidenceImage(null);
     setModalOpen(true);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecciona una imagen válida (JPG, PNG, GIF, WebP)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEvidenceImage(reader.result as string);
+      toast.success('Fotografía adjuntada con éxito');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleEvidenceSubmit = (e: React.FormEvent) => {
@@ -550,12 +633,15 @@ export const EstudianteDashboard: React.FC = () => {
       id: `sub_${Date.now()}`,
       studentName: 'Juan Pérez',
       studentId: 'std_1',
+      classroomId: '10-02',
       missionId: selectedMission.id,
       missionTitle: selectedMission.title,
-      content: evidenceText || 'Evidencia enviada por el estudiante',
+      category: evidenceCategory || selectedMission.category || 'Académica',
+      content: evidenceText || (evidenceImage ? 'Fotografía de evidencia entregada por el alumno' : 'Evidencia enviada por el estudiante'),
+      imageUrl: evidenceImage || undefined,
       submittedAt: 'Justo ahora',
       date: 'Justo ahora',
-      evidenceType: 'text' as const,
+      evidenceType: evidenceImage ? ('image' as const) : ('text' as const),
       points: selectedMission.points,
       status: 'PENDING'
     };
@@ -578,15 +664,66 @@ export const EstudianteDashboard: React.FC = () => {
       console.error('Error al guardar evidencia en localStorage:', err);
     }
 
-    // Disparar evento global para actualización en tiempo real en los Dashboards del Director y Docente
+    // Disparar eventos globales para actualización en tiempo real
     window.dispatchEvent(new Event('student_evidence_submitted'));
     window.dispatchEvent(new Event('global_system_updated'));
+    window.dispatchEvent(new Event('director_data_updated'));
     
     toast.success('¡Evidencia enviada con éxito!', {
-      description: 'El docente y director revisarán y validarán tu evidencia pronto.',
+      description: `Categoría: ${evidenceCategory} · ${evidenceImage ? 'Foto adjuntada' : 'Texto registrado'}.`,
     });
     setModalOpen(false);
     setEvidenceText('');
+    setEvidenceImage(null);
+  };
+
+  const handleOpenCorrectionModal = (mission: MissionItem) => {
+    setSelectedCorrectionMission(mission);
+    setCorrectionFeedback('');
+    setCorrectionModalOpen(true);
+  };
+
+  const handleCorrectionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCorrectionMission || !correctionFeedback.trim()) return;
+
+    const newCorrection = {
+      id: `corr_${Date.now()}`,
+      missionId: selectedCorrectionMission.id,
+      missionTitle: selectedCorrectionMission.title,
+      studentName: 'Juan Pérez',
+      studentId: 'std_1',
+      classroomId: '10-02',
+      feedback: correctionFeedback.trim(),
+      createdAt: 'Justo ahora',
+      status: 'PENDING'
+    };
+
+    try {
+      const existingRaw = localStorage.getItem('mission_corrections');
+      let list = [];
+      if (existingRaw) {
+        try {
+          list = JSON.parse(existingRaw);
+        } catch (err) {
+          console.error('Error al parsear mission_corrections:', err);
+        }
+      }
+      const updated = [newCorrection, ...list];
+      localStorage.setItem('mission_corrections', JSON.stringify(updated));
+    } catch (err) {
+      console.error('Error al guardar la sugerencia en localStorage:', err);
+    }
+
+    window.dispatchEvent(new Event('mission_correction_submitted'));
+    window.dispatchEvent(new Event('global_system_updated'));
+
+    toast.success('Sugerencia enviada a los profesores', {
+      description: 'Los docentes y el equipo académico revisarán tu reporte.',
+    });
+
+    setCorrectionModalOpen(false);
+    setCorrectionFeedback('');
   };
 
   // Sidebar Menu Items Definition
@@ -605,10 +742,7 @@ export const EstudianteDashboard: React.FC = () => {
           1. SIDEBAR (Deep Blue, Fixed Left)
           ========================================== */}
       <aside
-        className={`w-64 bg-[#0A0F24] text-white flex flex-col justify-between shrink-0 transition-transform duration-300 z-40
-          fixed md:sticky top-0 h-screen
-          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        `}
+        className={`w-64 bg-[#0A0F24] text-white flex flex-col justify-between shrink-0 transition-transform duration-300 z-40 fixed md:sticky top-0 h-screen max-h-screen min-h-screen overflow-y-auto ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
         {/* Top Branding Section */}
         <div className="p-6 border-b border-blue-900/30 flex items-center justify-between">
@@ -762,18 +896,15 @@ export const EstudianteDashboard: React.FC = () => {
                 <div className="absolute -bottom-20 left-10 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl" />
 
                 <div className="p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-                 <div className="space-y-4 text-left max-w-lg">
+                  <div className="space-y-4 text-left max-w-lg">
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-[10px] sm:text-xs font-extrabold tracking-wide uppercase">
-                      {/* Se agregó ?. aquí */}
-                      {BANNER_SLIDES[bannerIndex]?.tag} 
+                      {dynamicBannerSlides[bannerIndex]?.tag} 
                     </span>
                     <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight transition-all duration-300">
-                      {/* Se agregó ?. aquí */}
-                      {BANNER_SLIDES[bannerIndex]?.title}
+                      {dynamicBannerSlides[bannerIndex]?.title}
                     </h2>
                     <p className="text-xs sm:text-sm text-indigo-100 font-medium">
-                      {/* Se agregó ?. aquí */}
-                      {BANNER_SLIDES[bannerIndex]?.text}
+                      {dynamicBannerSlides[bannerIndex]?.text}
                     </p>
                     <button
                       onClick={() => {
@@ -784,18 +915,16 @@ export const EstudianteDashboard: React.FC = () => {
                       }}
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-indigo-50 text-indigo-700 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
                     >
-                      {/* Se agregó ?. aquí */}
-                      <span>{BANNER_SLIDES[bannerIndex]?.buttonText}</span>
+                      <span>{dynamicBannerSlides[bannerIndex]?.buttonText}</span>
                     </button>
-                </div>
-
+                  </div>
 
                   <BannerTrophy />
                 </div>
 
                 {/* Pagination Dots */}
                 <div className="pb-4 flex justify-center gap-2">
-                  {BANNER_SLIDES.map((_, idx) => (
+                  {dynamicBannerSlides.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setBannerIndex(idx)}
@@ -807,6 +936,45 @@ export const EstudianteDashboard: React.FC = () => {
                   ))}
                 </div>
               </section>
+
+              {/* Tarjeta de Estudiante Destacado del Salón */}
+              {featuredStudent && (
+                <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 p-6 shadow-xl border-2 border-yellow-300/90 text-left transition-all">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/25 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-slate-900 text-yellow-400 flex items-center justify-center text-2xl font-black shadow-lg border border-yellow-400/40 shrink-0">
+                        ⭐
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-slate-900 text-yellow-400 font-extrabold text-[10px] uppercase px-2.5 py-0.5 rounded-full tracking-wider flex items-center gap-1 shadow-sm">
+                            <Sparkles className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                            Estudiante Destacado del Salón
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-950 opacity-80">
+                            {featuredStudent.updatedAt || 'Reciente'}
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-black text-slate-950 mt-1 flex items-center gap-2">
+                          {featuredStudent.studentName}
+                          <Crown className="w-5 h-5 text-amber-950 fill-amber-950" />
+                        </h3>
+                        <p className="text-xs text-slate-950 font-bold mt-1 italic bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/60 inline-block shadow-xs">
+                          "{featuredStudent.reason || 'Reconocido por su excelente trabajo y compromiso en el salón.'}"
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 hidden md:block">
+                      <div className="px-4 py-2 bg-slate-900/95 text-yellow-400 font-black text-xs rounded-2xl border border-yellow-400/40 shadow-lg flex items-center gap-1.5">
+                        <Star className="w-4 h-4 fill-yellow-400" />
+                        <span>Mención de Honor</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {/* Actividad Reciente */}
               <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
@@ -997,7 +1165,9 @@ export const EstudianteDashboard: React.FC = () => {
                   const rank = index + 1;
                   const isMe = item.id === '10-02';
                   const isLeader = index === 0;
-                  const displayPoints = rankingFilter === 'season' ? item.points : item.points + 10000;
+                  const displayPoints = rankingFilter === 'season'
+                    ? (item.puntosTemporada ?? (item.points || 0))
+                    : (item.puntosLiga ?? (item.points || 0));
 
                   return (
                     <div
@@ -1064,7 +1234,7 @@ export const EstudianteDashboard: React.FC = () => {
                   <Shield className="w-6 h-6 text-blue-600" />
                   Salón 10-02 - Los Invencibles
                 </h3>
-                <p className="text-xs text-slate-400 font-semibold">Tutor a cargo: Lic. Carlos Mendoza</p>
+                <p className="text-xs text-slate-400 font-semibold">Tutor a cargo: Lic. Yaritza Tirado</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -1150,10 +1320,24 @@ export const EstudianteDashboard: React.FC = () => {
                       className="bg-[#F8FAFC] border border-slate-100 p-5 rounded-2xl flex flex-col justify-between min-h-[180px] shadow-sm hover:border-slate-200 transition-all"
                     >
                       <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-200/50 text-slate-500">
-                            {mission.badge}
-                          </span>
+                        <div className="flex justify-between items-center gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-200/50 text-slate-500">
+                              {mission.badge}
+                            </span>
+                            {mission.isMandatory && (
+                              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200/80 flex items-center gap-1 shadow-xs">
+                                <ShieldAlert className="w-3 h-3 text-rose-600" />
+                                Obligatoria
+                              </span>
+                            )}
+                            {mission.isRejected && (
+                              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 text-rose-500" />
+                                Rechazada
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-slate-400 font-semibold">
                             {mission.category}
                           </span>
@@ -1164,22 +1348,49 @@ export const EstudianteDashboard: React.FC = () => {
                         <p className="text-[11px] text-slate-400 font-medium">
                           Gana <span className="text-indigo-600 font-bold">+{mission.points} pts</span> de temporada.
                         </p>
+                        {mission.isMandatory && (
+                          <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1 pt-0.5">
+                            <Lock className="w-3 h-3 text-rose-500" />
+                            Misión obligatoria: No se puede rechazar ni ignorar.
+                          </p>
+                        )}
+                        {mission.isRejected && (
+                          <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1 pt-0.5">
+                            <AlertCircle className="w-3 h-3 text-rose-500" />
+                            Tu última entrega fue rechazada. Por favor sube una nueva evidencia.
+                          </p>
+                        )}
                       </div>
 
                       {/* Bottom action container */}
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400 font-bold">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>{mission.timeRemaining}</span>
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400 font-bold">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{mission.timeRemaining}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCorrectionModal(mission)}
+                            className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-amber-600 transition-colors"
+                            title="Reportar error o sugerir corrección"
+                          >
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="hidden sm:inline">Sugerir Corrección</span>
+                          </button>
                         </div>
 
                         {isActive && (
                           <button
                             onClick={() => handleOpenEvidenceModal(mission)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-50 text-white text-[11px] font-bold rounded-xl transition-all shadow-sm shadow-indigo-600/10"
+                            className={`flex items-center gap-1 px-3 py-1.5 text-white text-[11px] font-bold rounded-xl transition-all shadow-sm ${
+                              mission.isRejected
+                                ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/10'
+                                : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/10'
+                            }`}
                           >
                             <Upload className="w-3.5 h-3.5" />
-                            <span>Subir evidencia</span>
+                            <span>{mission.isRejected ? 'Reintentar Entrega' : 'Subir evidencia'}</span>
                           </button>
                         )}
 
@@ -1319,6 +1530,25 @@ export const EstudianteDashboard: React.FC = () => {
             <form onSubmit={handleEvidenceSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700">
+                  Tipo / Categoría de Evidencia <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  required
+                  value={evidenceCategory}
+                  onChange={(e) => setEvidenceCategory(e.target.value)}
+                  className="w-full p-3 bg-[#F8FAFC] border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="Académica">Académica</option>
+                  <option value="Ambiental">Ambiental</option>
+                  <option value="Deportiva">Deportiva</option>
+                  <option value="Cultural">Cultural</option>
+                  <option value="Liderazgo">Liderazgo</option>
+                  <option value="Convivencia">Convivencia</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">
                   Descripción del cumplimiento
                 </label>
                 <textarea
@@ -1331,11 +1561,44 @@ export const EstudianteDashboard: React.FC = () => {
                 />
               </div>
 
-              {/* Drag zone mock */}
-              <div className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-5 text-center bg-[#F8FAFC]/50 hover:bg-indigo-50/10 transition-colors cursor-pointer space-y-2">
-                <Upload className="w-6 h-6 text-indigo-500 mx-auto" />
-                <p className="text-xs font-bold text-slate-700">Arrastra fotos o haz clic para subir</p>
-                <p className="text-[10px] text-slate-400">JPG, PNG o PDF · Máximo 15 MB</p>
+              {/* File upload input with preview */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">
+                  Fotografía de Evidencia (Opcional)
+                </label>
+                {evidenceImage ? (
+                  <div className="relative border border-indigo-200 bg-indigo-50/30 rounded-2xl p-3 flex items-center gap-3">
+                    <img
+                      src={evidenceImage}
+                      alt="Vista previa de evidencia"
+                      className="w-16 h-16 object-cover rounded-xl border border-indigo-300 shadow-sm"
+                    />
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-xs font-bold text-indigo-950 truncate">Imagen adjuntada correctamente</p>
+                      <p className="text-[10px] text-indigo-600 font-medium">Lista para ser evaluada</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEvidenceImage(null)}
+                      className="p-1.5 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors"
+                      title="Eliminar foto"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-5 text-center bg-[#F8FAFC]/50 hover:bg-indigo-50/10 transition-colors cursor-pointer block space-y-2">
+                    <Upload className="w-6 h-6 text-indigo-500 mx-auto" />
+                    <p className="text-xs font-bold text-slate-700">Haz clic para seleccionar o subir fotografía</p>
+                    <p className="text-[10px] text-slate-400">Archivos permitidos: JPG, PNG, GIF o WebP</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="flex justify-between items-center pt-3 border-t border-slate-100">
@@ -1353,6 +1616,72 @@ export const EstudianteDashboard: React.FC = () => {
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/10"
                   >
                     Enviar Evidencia
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          4. CORRECTION SUGGESTION MODAL
+          ========================================== */}
+      {correctionModalOpen && selectedCorrectionMission && (
+        <div className="fixed inset-0 bg-[#020617]/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 text-left">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Sugerir Corrección / Reportar Error
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1.5 leading-snug">
+                  {selectedCorrectionMission.title}
+                </h3>
+                <p className="text-xs text-slate-400 font-semibold">
+                  Misión {selectedCorrectionMission.badge} · +{selectedCorrectionMission.points} pts
+                </p>
+              </div>
+              <button
+                onClick={() => setCorrectionModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                aria-label="Cerrar modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCorrectionSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">
+                  Detalle de la sugerencia o problema <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={correctionFeedback}
+                  onChange={(e) => setCorrectionFeedback(e.target.value)}
+                  placeholder="Explica qué error o inconsistencia encontraste (ej: 'El enlace de la guía no abre', 'La fecha es confusa')..."
+                  className="w-full p-3 bg-[#F8FAFC] border border-slate-200 rounded-2xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                <span className="text-[10px] text-slate-400 font-medium">Revisión docente directa</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCorrectionModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-amber-600/10 flex items-center gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Enviar Sugerencia
                   </button>
                 </div>
               </div>

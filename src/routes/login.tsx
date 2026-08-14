@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Eye, EyeOff, GraduationCap, Loader2, Sparkles, Star, Zap } from "lucide-react";
 import { toast } from "sonner";
+import logoImpulsa from "../assets/logo-impulsa.png";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,17 +96,14 @@ export function Login() {
       <div className="relative z-10 w-full max-w-md">
         {/* Header Branding */}
         <div className="mb-6 text-center">
-          <div className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 ring-1 ring-indigo-400/40 shadow-lg shadow-indigo-500/20 backdrop-blur">
-            <GraduationCap className="h-8 w-8 text-indigo-300" aria-hidden="true" />
-            <Sparkles className="absolute -top-1.5 -right-1.5 h-4 w-4 text-amber-300 animate-bounce" />
+          <div className="relative mx-auto mb-3 flex items-center justify-center">
+            <img
+              src={logoImpulsa}
+              alt="IMPULSA Logo"
+              className="h-28 sm:h-32 w-auto max-w-[240px] object-contain drop-shadow-[0_10px_25px_rgba(99,102,241,0.4)] transition-transform duration-300 hover:scale-105"
+            />
           </div>
-          <div className="inline-flex items-center gap-1.5">
-            <h1 className="text-4xl font-black tracking-tight text-white drop-shadow-md">
-              IMPULSA
-            </h1>
-            <Zap className="h-6 w-6 text-amber-400 fill-amber-400/30 animate-pulse" />
-          </div>
-          <p className="mt-2 text-xs sm:text-sm text-indigo-200/70">
+          <p className="mt-1 text-xs sm:text-sm text-indigo-200/70">
             Ingresa con tu cuenta escolar para continuar la temporada
           </p>
         </div>

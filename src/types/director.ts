@@ -12,6 +12,7 @@ export interface Mission {
   evidenceType: EvidenceType;
   status: 'ACTIVE' | 'COMPLETED' | 'active' | 'completed';
   classroomId?: string;
+  isMandatory?: boolean;
 }
 
 export interface Evidence {
@@ -20,6 +21,7 @@ export interface Evidence {
   missionTitle: string;
   studentId?: string;
   studentName: string;
+  avatar?: string;
   submittedAt: string;
   evidenceType: EvidenceType;
   content: string;
@@ -48,4 +50,12 @@ export interface ClassroomKPIs {
   pendingReviews: number;
   completionRate: number;
   totalPointsAwarded: number;
+}
+
+export interface FeaturedStudent {
+  classroomId: string;
+  studentId: string;
+  studentName: string;
+  reason: string;
+  updatedAt: string;
 }

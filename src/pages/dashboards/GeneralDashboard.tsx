@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import logoColegio from "../../assets/cologo.png";
+import logoImpulsa from "../../assets/logo-impulsa.png";
 import { useNavigate } from '@tanstack/react-router';
 import {
   Home,
@@ -32,28 +33,12 @@ import { toast } from 'sonner';
 // ==========================================
 
 const ImpulsaLogo: React.FC = () => (
-  <div className="flex items-center gap-3">
-    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e2e6e] border border-blue-400/30 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M19 5c0 0-4.5.5-8 4-2.8 2.8-3.5 6.5-3.5 6.5s-2-1-4 1c-2 2-1.5 6-1.5 6s4 .5 6-1.5c2-2 1-4 1-4s3.7-.7 6.5-3.5c3.5-3.5 4-8 4-8z"
-          fill="url(#rocketGoldGrad)"
-        />
-        <path
-          d="M4 20c.5-1.5 2-2.5 2.5-3m-4.5.5l1.5-1.5"
-          stroke="#F59E0B"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <defs>
-          <linearGradient id="rocketGoldGrad" x1="4" y1="5" x2="19" y2="20" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#FDE047" />
-            <stop offset="0.5" stopColor="#F59E0B" />
-            <stop offset="1" stopColor="#D97706" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
+  <div className="flex items-center gap-2.5">
+    <img
+      src={logoImpulsa}
+      alt="Logo IMPULSA"
+      className="w-10 h-10 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(59,130,246,0.4)]"
+    />
     <span className="text-xl font-black tracking-widest text-[#FFD700] select-none font-sans drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
       IMPULSA
     </span>
@@ -135,7 +120,7 @@ export const GeneralDashboard: React.FC = () => {
   const [classrooms, setClassrooms] = useState<any[]>(() => {
     const stored = localStorage.getItem('school_classrooms');
     return stored ? JSON.parse(stored) : [
-      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Carlos Mendoza', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
+      { id: '10-02', name: '10-02 Los Invencibles', grade: '10°', director: 'Yaritza Tirado', points: 12700, approvedMissions: 40, rejectedMissions: 5, members: 28 },
       { id: '10-01', name: '10-01 Líderes', grade: '10°', director: 'Sofía Rincón', points: 9210, approvedMissions: 45, rejectedMissions: 3, members: 30 },
       { id: '09-01', name: '09-01 Exploradores', grade: '9°', director: 'Jorge Salazar', points: 7850, approvedMissions: 32, rejectedMissions: 8, members: 26 },
       { id: '11-02', name: '11-02 Los Imparables', grade: '11°', director: 'Marta Pérez', points: 8980, approvedMissions: 38, rejectedMissions: 2, members: 25 },
@@ -165,8 +150,13 @@ export const GeneralDashboard: React.FC = () => {
   }, []);
 
   const sortedClassrooms = useMemo(() => {
-    return [...classrooms].sort((a, b) => b.points - a.points);
-  }, [classrooms]);
+    return [...classrooms].sort((a: any, b: any) => {
+      if (rankingFilter === 'season') {
+        return (b.puntosTemporada ?? (b.points || 0)) - (a.puntosTemporada ?? (a.points || 0));
+      }
+      return (b.puntosLiga ?? (b.points || 0)) - (a.puntosLiga ?? (a.points || 0));
+    });
+  }, [classrooms, rankingFilter]);
 
   const myClassroomIndex = useMemo(() => {
     const idx = sortedClassrooms.findIndex((c: any) => c.id === '10-02');
@@ -197,10 +187,7 @@ export const GeneralDashboard: React.FC = () => {
       
       {/* 1. SIDEBAR */}
       <aside
-        className={`w-64 bg-[#0A0F24] text-white flex flex-col justify-between shrink-0 transition-transform duration-300 z-40
-          fixed md:sticky top-0 h-screen
-          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        `}
+        className={`w-64 bg-[#0A0F24] text-white flex flex-col justify-between shrink-0 transition-transform duration-300 z-40 fixed md:sticky top-0 h-screen max-h-screen min-h-screen overflow-y-auto ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
         <div className="p-6 border-b border-blue-900/30 flex items-center justify-between">
           <ImpulsaLogo />
@@ -377,7 +364,7 @@ export const GeneralDashboard: React.FC = () => {
                       <h4 className="text-sm font-bold text-slate-800">Grado {item.name}</h4>
                     </div>
                     <span className="text-sm font-black text-slate-800">
-                      {(rankingFilter === 'season' ? item.points : item.points + 10000).toLocaleString('es-CO')} pts
+                      {(rankingFilter === 'season' ? (item.puntosTemporada ?? (item.points || 0)) : (item.puntosLiga ?? (item.points || 0))).toLocaleString('es-CO')} pts
                     </span>
                   </div>
                 ))}
@@ -389,7 +376,7 @@ export const GeneralDashboard: React.FC = () => {
 
         <footer className="bg-white border-t border-slate-200 py-6 text-center shrink-0">
           <p className="text-xs sm:text-sm text-slate-500 font-semibold">
-            Impulsa lo mejor de ti. Impulsa a tu salón. ❤️🚀
+            El principio de la sabiduría es el temor al señor. Prov 1;7 ❤️🚀
           </p>
         </footer>
       </div>

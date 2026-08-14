@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, Award, FileText, Link as LinkIcon, Image as ImageIcon, Type, AlertCircle } from 'lucide-react';
+import { X, Calendar, Award, FileText, Link as LinkIcon, Image as ImageIcon, Type, AlertCircle, ShieldAlert } from 'lucide-react';
 import { EvidenceType, Mission } from '../../types/director';
 
 interface CreateMissionModalProps {
@@ -18,6 +18,7 @@ export const CreateMissionModal: React.FC<CreateMissionModalProps> = ({
   const [points, setPoints] = useState<number>(100);
   const [dueDate, setDueDate] = useState('');
   const [evidenceType, setEvidenceType] = useState<EvidenceType>('link');
+  const [isMandatory, setIsMandatory] = useState<boolean>(false);
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
@@ -35,6 +36,7 @@ export const CreateMissionModal: React.FC<CreateMissionModalProps> = ({
       points: Number(points) || 50,
       dueDate,
       evidenceType,
+      isMandatory,
     });
 
     // Reset form
@@ -43,6 +45,7 @@ export const CreateMissionModal: React.FC<CreateMissionModalProps> = ({
     setPoints(100);
     setDueDate('');
     setEvidenceType('link');
+    setIsMandatory(false);
     setError('');
     onClose();
   };
@@ -159,6 +162,25 @@ export const CreateMissionModal: React.FC<CreateMissionModalProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Mandatory Mission Toggle Switch */}
+          <div className="flex items-start justify-between gap-3 p-3.5 rounded-xl bg-gray-800/80 border border-gray-700/80">
+            <div className="space-y-0.5 text-left">
+              <label className="text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer">
+                <ShieldAlert className="w-4 h-4 text-rose-400" />
+                Misión Obligatoria (Mandatory Mission)
+              </label>
+              <p className="text-[11px] text-gray-400 leading-snug">
+                Las misiones obligatorias no se pueden rechazar ni ignorar por los estudiantes.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={isMandatory}
+              onChange={(e) => setIsMandatory(e.target.checked)}
+              className="w-5 h-5 accent-indigo-600 rounded cursor-pointer shrink-0 mt-0.5"
+            />
           </div>
 
           {/* Footer Actions */}

@@ -1,4 +1,5 @@
 import React from 'react';
+import logoImpulsa from "../../assets/logo-impulsa.png";
 import { Link } from '@tanstack/react-router';
 import {
   Rocket,
@@ -112,11 +113,13 @@ export const InicioDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-slate-800 flex">
       {/* ---------- SIDEBAR ---------- */}
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col bg-blue-900 text-white px-4 py-6">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 rounded-full bg-blue-700 grid place-items-center ring-2 ring-amber-300/40">
-            <Rocket className="w-5 h-5 text-amber-300" />
-          </div>
+      <aside className="hidden lg:flex fixed md:sticky top-0 h-screen max-h-screen min-h-screen overflow-y-auto w-64 flex-col bg-blue-900 text-white px-4 py-6 shrink-0">
+        <div className="flex items-center gap-2.5 px-2">
+          <img
+            src={logoImpulsa}
+            alt="Logo IMPULSA"
+            className="w-10 h-10 object-contain shrink-0 drop-shadow-[0_2px_8px_rgba(59,130,246,0.4)]"
+          />
           <span className="text-xl font-black tracking-wide text-amber-300">IMPULSA</span>
         </div>
 
@@ -271,7 +274,7 @@ export const InicioDashboard: React.FC = () => {
         </main>
 
         <footer className="px-5 sm:px-8 py-6 text-center text-sm text-slate-500">
-          Impulsa lo mejor de ti. Impulsa a tu salón. <span aria-hidden>❤️🚀</span>
+          El principio de la sabiduría es el temor al señor. Prov 1;7 <span aria-hidden>❤️🚀</span>
         </footer>
       </div>
     </div>
